@@ -318,9 +318,6 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
-});
-
-export type AppRouter = typeof appRouter;
 
   // Questionnaire router - Public access for questionnaire submission
   questionnaire: router({
@@ -451,3 +448,6 @@ export type AppRouter = typeof appRouter;
         };
       }),
   }),
+});
+
+export type AppRouter = typeof appRouter;
