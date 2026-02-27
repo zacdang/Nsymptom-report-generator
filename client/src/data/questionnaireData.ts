@@ -20,7 +20,6 @@ export const HEAD_SYMPTOMS: SymptomItem[] = [
   { name: "头皮屑", category: "head", subcategory: "头发相关" },
   { name: "易掉发", category: "head", subcategory: "头发相关" },
   { name: "白头发", category: "head", subcategory: "头发相关" },
-  { name: "脂溢性脱发", category: "head", subcategory: "头发相关" },
   
   // 口腔相关
   { name: "口干舌燥", category: "head", subcategory: "口腔相关" },
@@ -99,7 +98,7 @@ export const LIMBS_SYMPTOMS: SymptomItem[] = [
   { name: "手脚冰冷", category: "limbs" },
   { name: "指甲变型", category: "limbs" },
   { name: "指头关节黑色", category: "limbs" },
-  { name: "容易抽搐、麻木", category: "limbs" },
+  { name: "容易抽搐麻木", category: "limbs" },
   { name: "静脉曲张", category: "limbs" },
   { name: "手肘关节粗糙", category: "limbs" },
   { name: "关节疼痛", category: "limbs" },
@@ -121,7 +120,7 @@ export const MENTAL_SYMPTOMS: SymptomItem[] = [
   { name: "多梦", category: "mental" },
   { name: "容易打瞌睡", category: "mental" },
   { name: "记忆力减退", category: "mental" },
-  { name: "易生气、不耐烦", category: "mental" },
+  { name: "易生气不耐烦", category: "mental" },
   { name: "郁闷", category: "mental" },
   { name: "熬夜", category: "mental" },
   { name: "压力大", category: "mental" },
