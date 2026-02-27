@@ -274,3 +274,14 @@ export async function upsertReportTemplate(introParagraph: string, imageUrls: st
     await db.insert(reportTemplates).values({ introParagraph, imageUrls: imageUrlsJson });
   }
 }
+
+// Re-export questionnaire database functions
+export {
+  insertQuestionnaireResponse,
+  insertQuestionnaireSymptoms,
+  insertQuestionnaireLifestyle,
+  searchQuestionnaireByName,
+  getQuestionnaireResponse,
+  getQuestionnaireSymptoms,
+  getQuestionnaireLifestyle,
+} from "./questionnaire-db";

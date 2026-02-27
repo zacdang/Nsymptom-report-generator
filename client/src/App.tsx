@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
+import Questionnaire from "./pages/Questionnaire";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -17,6 +18,7 @@ function Router() {
       <Route path={"/login"} component={Login} />
       <Route path={"/admin"} component={AdminDashboard} />
       <Route path={"/employee"} component={EmployeeDashboard} />
+      <Route path={"/questionnaire"} component={Questionnaire} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

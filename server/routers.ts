@@ -321,3 +321,133 @@ export const appRouter = router({
 });
 
 export type AppRouter = typeof appRouter;
+
+  // Questionnaire router - Public access for questionnaire submission
+  questionnaire: router({
+    submit: publicProcedure
+      .input(z.object({
+        // Basic info
+        name: z.string().min(1, "Name is required"),
+        gender: z.enum(["male", "female"]),
+        ageRange: z.string().min(1, "Age range is required"),
+        height: z.string().optional(),
+        weight: z.string().optional(),
+        waist: z.string().optional(),
+        bloodPressure: z.string().optional(),
+        bloodSugar: z.string().optional(),
+        bodyFat: z.string().optional(),
+        
+        // Symptoms
+        selectedSymptoms: z.array(z.object({
+          name: z.string(),
+          category: z.enum(["head", "body", "limbs", "mental"]),
+        })),
+        
+        // Lifestyle
+        exerciseParticipation: z.string().optional(),
+        exerciseType: z.string().optional(),
+        exerciseFrequency: z.string().optional(),
+        wakeTime: z.string().optional(),
+        napTime: z.string().optional(),
+        sleepTime: z.string().optional(),
+        hungriestTime: z.string().optional(),
+        mostTiredTime: z.string().optional(),
+        lifestyleHabits: z.array(z.string()).optional(),
+        breakfastTime: z.string().optional(),
+        breakfastHas: z.string().optional(),
+        lunchTime: z.string().optional(),
+        lunchHas: z.string().optional(),
+        dinnerTime: z.string().optional(),
+        dinnerHas: z.string().optional(),
+        lateNightSnackTime: z.string().optional(),
+        lateNightSnackHas: z.string().optional(),
+        dietaryPreferences: z.array(z.string()).optional(),
+        unsuitableFoods: z.string().optional(),
+        fruitFrequency: z.string().optional(),
+        coarseGrainFrequency: z.string().optional(),
+        workEnvironment: z.array(z.string()).optional(),
+        medicationsAllergies: z.string().optional(),
+        medicalHistory: z.array(z.string()).optional(),
+        additionalNotes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        // Insert questionnaire response
+        const responseId = await db.insertQuestionnaireResponse({
+          name: input.name,
+          gender: input.gender,
+          ageRange: input.ageRange,
+          height: input.height,
+          weight: input.weight,
+          waist: input.waist,
+          bloodPressure: input.bloodPressure,
+          bloodSugar: input.bloodSugar,
+          bodyFat: input.bodyFat,
+          additionalNotes: input.additionalNotes,
+        });
+        
+        // Insert selected symptoms
+        if (input.selectedSymptoms && input.selectedSymptoms.length > 0) {
+          await db.insertQuestionnaireSymptoms(
+            responseId,
+            input.selectedSymptoms
+          );
+        }
+        
+        // Insert lifestyle data
+        await db.insertQuestionnaireLifestyle(responseId, {
+          exerciseParticipation: input.exerciseParticipation,
+          exerciseType: input.exerciseType,
+          exerciseFrequency: input.exerciseFrequency,
+          wakeTime: input.wakeTime,
+          napTime: input.napTime,
+          sleepTime: input.sleepTime,
+          hungriestTime: input.hungriestTime,
+          mostTiredTime: input.mostTiredTime,
+          lifestyleHabits: input.lifestyleHabits ? JSON.stringify(input.lifestyleHabits) : null,
+          breakfastTime: input.breakfastTime,
+          breakfastHas: input.breakfastHas,
+          lunchTime: input.lunchTime,
+          lunchHas: input.lunchHas,
+          dinnerTime: input.dinnerTime,
+          dinnerHas: input.dinnerHas,
+          lateNightSnackTime: input.lateNightSnackTime,
+          lateNightSnackHas: input.lateNightSnackHas,
+          dietaryPreferences: input.dietaryPreferences ? JSON.stringify(input.dietaryPreferences) : null,
+          unsuitableFoods: input.unsuitableFoods,
+          fruitFrequency: input.fruitFrequency,
+          coarseGrainFrequency: input.coarseGrainFrequency,
+          workEnvironment: input.workEnvironment ? JSON.stringify(input.workEnvironment) : null,
+          medicationsAllergies: input.medicationsAllergies,
+          medicalHistory: input.medicalHistory ? JSON.stringify(input.medicalHistory) : null,
+        });
+        
+        return { success: true, responseId };
+      }),
+    
+    search: employeeProcedure
+      .input(z.object({ name: z.string().min(1, "Name is required") }))
+      .query(async ({ input }) => {
+        return await db.searchQuestionnaireByName(input.name);
+      }),
+    
+    get: employeeProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const response = await db.getQuestionnaireResponse(input.id);
+        if (!response) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Questionnaire response not found",
+          });
+        }
+        
+        const symptoms = await db.getQuestionnaireSymptoms(input.id);
+        const lifestyle = await db.getQuestionnaireLifestyle(input.id);
+        
+        return {
+          ...response,
+          symptoms,
+          lifestyle,
+        };
+      }),
+  }),
