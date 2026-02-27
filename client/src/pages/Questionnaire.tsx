@@ -20,7 +20,7 @@ import { Textarea } from "../components/ui/textarea";
 import { Checkbox } from "../components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "wouter";
 import { trpc } from "../lib/trpc";
 
 type Step = 1 | 2 | 3;
@@ -70,7 +70,7 @@ interface FormData {
 }
 
 export default function Questionnaire() {
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart>(null);
   const [formData, setFormData] = useState<FormData>({
@@ -143,7 +143,7 @@ export default function Questionnaire() {
   const submitMutation = trpc.questionnaire.submit.useMutation({
     onSuccess: () => {
       toast.success("问卷提交成功！感谢您的填写。");
-      setTimeout(() => navigate("/"), 1500);
+      setTimeout(() => setLocation("/"), 1500);
     },
     onError: (error) => {
       toast.error(error.message || "提交失败，请重试");
