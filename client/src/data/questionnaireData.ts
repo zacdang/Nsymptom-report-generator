@@ -4,6 +4,7 @@ export interface SymptomItem {
   name: string;
   category: 'head' | 'body' | 'limbs' | 'mental';
   subcategory?: string;
+  femaleOnly?: boolean;
 }
 
 export const HEAD_SYMPTOMS: SymptomItem[] = [
@@ -67,14 +68,14 @@ export const BODY_SYMPTOMS: SymptomItem[] = [
   { name: "贫血", category: "body", subcategory: "心血管" },
   { name: "心律不齐", category: "body", subcategory: "心血管" },
   
-  // 妇科相关
-  { name: "经期不规律", category: "body", subcategory: "妇科相关" },
-  { name: "痛经", category: "body", subcategory: "妇科相关" },
-  { name: "外阴瘙痒", category: "body", subcategory: "妇科相关" },
-  { name: "宫颈息肉", category: "body", subcategory: "妇科相关" },
-  { name: "白带多", category: "body", subcategory: "妇科相关" },
-  { name: "经前胸胀", category: "body", subcategory: "妇科相关" },
-  { name: "盆腔积液", category: "body", subcategory: "妇科相关" },
+  // 妇科相关 (female only)
+  { name: "经期不规律", category: "body", subcategory: "妇科相关", femaleOnly: true },
+  { name: "痛经", category: "body", subcategory: "妇科相关", femaleOnly: true },
+  { name: "外阴瘙痒", category: "body", subcategory: "妇科相关", femaleOnly: true },
+  { name: "宫颈息肉", category: "body", subcategory: "妇科相关", femaleOnly: true },
+  { name: "白带多", category: "body", subcategory: "妇科相关", femaleOnly: true },
+  { name: "经前胸胀", category: "body", subcategory: "妇科相关", femaleOnly: true },
+  { name: "盆腔积液", category: "body", subcategory: "妇科相关", femaleOnly: true },
   
   // 其他身体症状
   { name: "伤口不易愈合", category: "body", subcategory: "其他" },
@@ -126,6 +127,11 @@ export const MENTAL_SYMPTOMS: SymptomItem[] = [
   { name: "压力大", category: "mental" },
   { name: "神经衰弱", category: "mental" },
   { name: "抑郁", category: "mental" },
+];
+
+// Female-only medical history items
+export const FEMALE_ONLY_MEDICAL_HISTORY = [
+  "menopause", "uterine_fibroids"
 ];
 
 export const AGE_RANGES = [
@@ -191,8 +197,8 @@ export const MEDICAL_HISTORY = [
   { value: "asthma", label: "哮喘" },
   { value: "bronchitis", label: "支气管炎" },
   { value: "arthritis", label: "（类）风湿性关节炎" },
-  { value: "menopause", label: "更年期综合症" },
-  { value: "uterine_fibroids", label: "子宫肌瘤" },
+  { value: "menopause", label: "更年期综合症", femaleOnly: true },
+  { value: "uterine_fibroids", label: "子宫肌瘤", femaleOnly: true },
   { value: "hyperthyroidism", label: "甲亢" },
   { value: "hypothyroidism", label: "甲减" },
   { value: "cyst", label: "囊肿" },
