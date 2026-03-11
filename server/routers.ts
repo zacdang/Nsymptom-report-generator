@@ -148,6 +148,49 @@ export const appRouter = router({
         }),
     }),
     
+    // Symptom Analysis knowledge base management
+    symptomAnalysis: router({
+      list: employeeProcedure.query(async () => {
+        return await db.getAllSymptomAnalysis();
+      }),
+
+      create: adminProcedure
+        .input(z.object({
+          groupLabel: z.string().min(1),
+          symptomNames: z.string().min(1),
+          analysisText: z.string().min(1),
+          category: z.string().min(1),
+          subCategory: z.string().min(1),
+          displayOrder: z.number().int().min(0),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.createSymptomAnalysis(input);
+        }),
+
+      update: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          groupLabel: z.string().optional(),
+          symptomNames: z.string().optional(),
+          analysisText: z.string().optional(),
+          category: z.string().optional(),
+          subCategory: z.string().optional(),
+          displayOrder: z.number().int().min(0).optional(),
+        }))
+        .mutation(async ({ input }) => {
+          const { id, ...updates } = input;
+          await db.updateSymptomAnalysis(id, updates);
+          return { success: true };
+        }),
+
+      delete: adminProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input }) => {
+          await db.deleteSymptomAnalysis(input.id);
+          return { success: true };
+        }),
+    }),
+
     // Employee management
     employees: router({
       list: adminProcedure.query(async () => {

@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import SymptomsManagement from "@/components/admin/SymptomsManagement";
+import SymptomAnalysisManagement from "@/components/admin/SymptomAnalysisManagement";
 import EmployeesManagement from "@/components/admin/EmployeesManagement";
 import ReportsView from "@/components/admin/ReportsView";
 
@@ -57,12 +58,17 @@ export default function AdminDashboard() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <Tabs defaultValue="symptoms" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue="analysis" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="analysis">体质解析库</TabsTrigger>
             <TabsTrigger value="symptoms">症状管理</TabsTrigger>
             <TabsTrigger value="employees">伙伴管理</TabsTrigger>
             <TabsTrigger value="reports">报告查看</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="analysis" className="mt-6">
+            <SymptomAnalysisManagement />
+          </TabsContent>
 
           <TabsContent value="symptoms" className="mt-6">
             <SymptomsManagement />

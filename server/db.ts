@@ -307,6 +307,25 @@ export async function getSymptomAnalysisByNames(names: string[]): Promise<Sympto
   return matched;
 }
 
+export async function createSymptomAnalysis(data: { groupLabel: string; symptomNames: string; analysisText: string; category: string; subCategory: string; displayOrder: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(symptomAnalysis).values(data);
+  return result;
+}
+
+export async function updateSymptomAnalysis(id: number, updates: Partial<{ groupLabel: string; symptomNames: string; analysisText: string; category: string; subCategory: string; displayOrder: number }>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(symptomAnalysis).set(updates).where(eq(symptomAnalysis.id, id));
+}
+
+export async function deleteSymptomAnalysis(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(symptomAnalysis).where(eq(symptomAnalysis.id, id));
+}
+
 // Re-export questionnaire database functions
 export {
   insertQuestionnaireResponse,
