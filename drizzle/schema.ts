@@ -171,3 +171,28 @@ export const questionnaireLifestyle = mysqlTable("questionnaire_lifestyle", {
 
 export type QuestionnaireLifestyle = typeof questionnaireLifestyle.$inferSelect;
 export type InsertQuestionnaireLifestyle = typeof questionnaireLifestyle.$inferInsert;
+
+/**
+ * Symptom analysis knowledge base table
+ * Stores analysis text for symptom groups from the 体质解析报告
+ * Each row represents a group of related symptoms sharing the same analysis
+ */
+export const symptomAnalysis = mysqlTable("symptom_analysis", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Display label for the symptom group, e.g. "眼睛疲劳、充血、易流泪畏光、眼袋" */
+  groupLabel: varchar("group_label", { length: 500 }).notNull(),
+  /** JSON array of individual symptom names in this group */
+  symptomNames: text("symptom_names").notNull(),
+  /** Full analysis text including 症状说明, 体质分析, 调整方向, 推荐产品 */
+  analysisText: text("analysis_text").notNull(),
+  /** Category: symptom, lifestyle, dietary, work, medical, dietary_text */
+  category: varchar("category", { length: 50 }).notNull(),
+  /** Sub-category for symptoms: head, body, limbs, mental; for others same as category */
+  subCategory: varchar("sub_category", { length: 50 }).notNull(),
+  displayOrder: int("display_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SymptomAnalysis = typeof symptomAnalysis.$inferSelect;
+export type InsertSymptomAnalysis = typeof symptomAnalysis.$inferInsert;

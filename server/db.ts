@@ -1,7 +1,7 @@
 import { eq, desc, asc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
-import { InsertUser, users, employees, Employee, InsertEmployee, symptoms, Symptom, InsertSymptom, reports, Report, InsertReport, reportTemplates } from "../drizzle/schema";
+import { InsertUser, users, employees, Employee, InsertEmployee, symptoms, Symptom, InsertSymptom, reports, Report, InsertReport, reportTemplates, symptomAnalysis, SymptomAnalysis } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: any | null = null;
@@ -273,6 +273,38 @@ export async function upsertReportTemplate(introParagraph: string, imageUrls: st
   } else {
     await db.insert(reportTemplates).values({ introParagraph, imageUrls: imageUrlsJson });
   }
+}
+
+// Symptom analysis functions
+export async function getAllSymptomAnalysis(): Promise<SymptomAnalysis[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.select().from(symptomAnalysis).orderBy(asc(symptomAnalysis.displayOrder));
+}
+
+export async function getSymptomAnalysisByNames(names: string[]): Promise<SymptomAnalysis[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Get all analysis entries and filter by matching symptom names
+  const allAnalysis = await db.select().from(symptomAnalysis).orderBy(asc(symptomAnalysis.displayOrder));
+  
+  const matched: SymptomAnalysis[] = [];
+  const matchedIds = new Set<number>();
+  
+  for (const entry of allAnalysis) {
+    const entryNames: string[] = JSON.parse(entry.symptomNames);
+    // Check if any of the input names match any symptom in this group
+    for (const name of names) {
+      if (entryNames.includes(name) && !matchedIds.has(entry.id)) {
+        matched.push(entry);
+        matchedIds.add(entry.id);
+        break;
+      }
+    }
+  }
+  
+  return matched;
 }
 
 // Re-export questionnaire database functions

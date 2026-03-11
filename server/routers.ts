@@ -447,6 +447,101 @@ export const appRouter = router({
           lifestyle,
         };
       }),
+
+    generateReport: employeeProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const response = await db.getQuestionnaireResponse(input.id);
+        if (!response) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Questionnaire response not found",
+          });
+        }
+
+        const symptoms = await db.getQuestionnaireSymptoms(input.id);
+        const lifestyle = await db.getQuestionnaireLifestyle(input.id);
+
+        // Collect all symptom/lifestyle/medical names
+        const symptomNames = symptoms.map((s: any) => s.symptomName);
+        const lifestyleHabits: string[] = lifestyle?.lifestyleHabits ? JSON.parse(lifestyle.lifestyleHabits) : [];
+        const dietaryPrefs: string[] = lifestyle?.dietaryPreferences ? JSON.parse(lifestyle.dietaryPreferences) : [];
+        const workEnv: string[] = lifestyle?.workEnvironment ? JSON.parse(lifestyle.workEnvironment) : [];
+        const medicalHistory: string[] = lifestyle?.medicalHistory ? JSON.parse(lifestyle.medicalHistory) : [];
+
+        const allNames = [...symptomNames, ...lifestyleHabits, ...dietaryPrefs, ...workEnv, ...medicalHistory];
+
+        // Match against symptom_analysis table
+        const matchedAnalysis = await db.getSymptomAnalysisByNames(allNames);
+
+        // Get report template
+        const template = await db.getReportTemplate();
+
+        // Build markdown report
+        let markdown = `# ${response.name} \u2014 \u4f53\u8d28\u89e3\u6790\u62a5\u544a\n\n`;
+
+        if (template?.introParagraph) {
+          markdown += `${template.introParagraph}\n\n`;
+        }
+
+        markdown += `## \u57fa\u672c\u4fe1\u606f\n\n`;
+        markdown += `- **\u59d3\u540d**\uff1a${response.name}\n`;
+        markdown += `- **\u6027\u522b**\uff1a${response.gender === 'male' ? '\u7537' : '\u5973'}\n`;
+        markdown += `- **\u5e74\u9f84\u8303\u56f4**\uff1a${response.ageRange}\n`;
+        if (response.height) markdown += `- **\u8eab\u9ad8**\uff1a${response.height} cm\n`;
+        if (response.weight) markdown += `- **\u4f53\u91cd**\uff1a${response.weight} kg\n`;
+        if (response.waist) markdown += `- **\u8170\u56f4**\uff1a${response.waist} cm\n`;
+        if (response.bloodPressure) markdown += `- **\u8840\u538b**\uff1a${response.bloodPressure}\n`;
+        if (response.bloodSugar) markdown += `- **\u8840\u7cd6**\uff1a${response.bloodSugar}\n`;
+        if (response.bodyFat) markdown += `- **\u4f53\u8102\u7387**\uff1a${response.bodyFat}%\n`;
+        markdown += `\n`;
+
+        if (symptomNames.length > 0) {
+          markdown += `## \u9009\u62e9\u7684\u75c7\u72b6\n\n`;
+          markdown += symptomNames.join('\u3001') + `\n\n`;
+        }
+
+        const symptomAnalysisEntries = matchedAnalysis.filter((a: any) => a.category === 'symptom');
+        if (symptomAnalysisEntries.length > 0) {
+          markdown += `## \u75c7\u72b6\u89e3\u6790\n\n`;
+          for (const entry of symptomAnalysisEntries) {
+            markdown += `### ${entry.groupLabel}\n\n`;
+            markdown += `${entry.analysisText}\n\n`;
+          }
+        }
+
+        const lifestyleAnalysis = matchedAnalysis.filter((a: any) => ['lifestyle', 'dietary', 'dietary_text', 'work'].includes(a.category));
+        if (lifestyleAnalysis.length > 0) {
+          markdown += `## \u751f\u6d3b\u4e60\u60ef\u89e3\u6790\n\n`;
+          for (const entry of lifestyleAnalysis) {
+            markdown += `### ${entry.groupLabel}\n\n`;
+            markdown += `${entry.analysisText}\n\n`;
+          }
+        }
+
+        const medicalAnalysis = matchedAnalysis.filter((a: any) => a.category === 'medical');
+        if (medicalAnalysis.length > 0) {
+          markdown += `## \u65e2\u5f80\u75c5\u53f2\u89e3\u6790\n\n`;
+          for (const entry of medicalAnalysis) {
+            markdown += `### ${entry.groupLabel}\n\n`;
+            markdown += `${entry.analysisText}\n\n`;
+          }
+        }
+
+        if (response.additionalNotes) {
+          markdown += `## \u8865\u5145\u8bf4\u660e\n\n`;
+          markdown += `${response.additionalNotes}\n\n`;
+        }
+
+        return { success: true, markdown, matchedCount: matchedAnalysis.length };
+      }),
+  }),
+
+  // Symptom analysis knowledge base router
+  symptomAnalysis: router({
+    list: employeeProcedure.query(async () => {
+      return await db.getAllSymptomAnalysis();
+    }),
   }),
 });
 
