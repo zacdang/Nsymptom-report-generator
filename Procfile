@@ -1,1 +1,1 @@
-web: pnpm start
+web: pnpm railway:start
