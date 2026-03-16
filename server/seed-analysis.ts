@@ -63,29 +63,37 @@ async function ensureAllTables(db: any) {
   }
 
   // reports table
-  await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS reports (
-      id int AUTO_INCREMENT NOT NULL,
-      employee_id int NOT NULL,
-      symptom_input text NOT NULL,
-      markdown_content text NOT NULL,
-      created_at timestamp NOT NULL DEFAULT (now()),
-      updated_at timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
-      CONSTRAINT reports_id PRIMARY KEY(id)
-    )
-  `);
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS reports (
+        id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
+        employee_id int NOT NULL,
+        symptom_input text NOT NULL,
+        markdown_content text NOT NULL,
+        created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("[Seed] reports table ensured");
+  } catch (e: any) {
+    console.error("[Seed] Error creating reports table:", e.message);
+  }
 
   // report_templates table
-  await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS report_templates (
-      id int AUTO_INCREMENT NOT NULL,
-      intro_paragraph text NOT NULL,
-      image_urls text NOT NULL,
-      created_at timestamp NOT NULL DEFAULT (now()),
-      updated_at timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
-      CONSTRAINT report_templates_id PRIMARY KEY(id)
-    )
-  `);
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS report_templates (
+        id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
+        intro_paragraph text NOT NULL,
+        image_urls text NOT NULL,
+        created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("[Seed] report_templates table ensured");
+  } catch (e: any) {
+    console.error("[Seed] Error creating report_templates table:", e.message);
+  }
 
   // questionnaire_symptoms table
   await db.execute(sql`
