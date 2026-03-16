@@ -1,7 +1,7 @@
 import { eq, desc, asc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
-import { InsertUser, users, employees, Employee, InsertEmployee, symptoms, Symptom, InsertSymptom, reports, Report, InsertReport, reportTemplates, symptomAnalysis, SymptomAnalysis } from "../drizzle/schema";
+import { InsertUser, users, employees, Employee, InsertEmployee, symptoms, Symptom, InsertSymptom, reports, Report, InsertReport, reportTemplates, ReportTemplate, symptomAnalysis, SymptomAnalysis } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: any | null = null;
@@ -261,17 +261,16 @@ export async function getReportTemplate() {
   return result[0] || null;
 }
 
-export async function upsertReportTemplate(introParagraph: string, imageUrls: string[]) {
+export async function upsertReportTemplate(name: string, templateText: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
   const existing = await getReportTemplate();
-  const imageUrlsJson = JSON.stringify(imageUrls);
   
   if (existing) {
-    await db.update(reportTemplates).set({ introParagraph, imageUrls: imageUrlsJson }).where(eq(reportTemplates.id, existing.id));
+    await db.update(reportTemplates).set({ name, templateText }).where(eq(reportTemplates.id, existing.id));
   } else {
-    await db.insert(reportTemplates).values({ introParagraph, imageUrls: imageUrlsJson });
+    await db.insert(reportTemplates).values({ name, templateText });
   }
 }
 

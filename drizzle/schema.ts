@@ -80,11 +80,14 @@ export type InsertReport = typeof reports.$inferInsert;
  */
 export const reportTemplates = mysqlTable("report_templates", {
   id: int("id").autoincrement().primaryKey(),
-  introParagraph: text("intro_paragraph").notNull(),
-  imageUrls: text("image_urls").notNull(), // JSON array of image URLs
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  templateText: text("template_text").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
 });
+
+export type ReportTemplate = typeof reportTemplates.$inferSelect;
+export type InsertReportTemplate = typeof reportTemplates.$inferInsert;
 /**
  * Questionnaire responses table
  * Stores basic information from health questionnaires

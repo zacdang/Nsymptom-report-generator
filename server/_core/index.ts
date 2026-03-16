@@ -171,8 +171,8 @@ async function startServer() {
         let markdown = `# ${response.name} — 体质解析报告\n\n`;
 
         // Add intro paragraph from template if available
-        if (template?.introParagraph) {
-          markdown += `${template.introParagraph}\n\n`;
+        if (template?.templateText) {
+          markdown += `${template.templateText}\n\n`;
         }
 
         // Basic info section
@@ -275,10 +275,10 @@ async function startServer() {
         await db.execute(sql`
           CREATE TABLE IF NOT EXISTS report_templates (
             id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
-            intro_paragraph text NOT NULL,
-            image_urls text NOT NULL,
-            created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            name varchar(255) NOT NULL,
+            template_text text NOT NULL,
+            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
           )
         `);
         templatesResult = 'OK';

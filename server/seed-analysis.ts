@@ -55,10 +55,10 @@ async function ensureAllTables(db: any) {
   await safeExecute(db, "report_templates", sql`
     CREATE TABLE IF NOT EXISTS report_templates (
       id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
-      intro_paragraph text NOT NULL,
-      image_urls text NOT NULL,
-      created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      name varchar(255) NOT NULL,
+      template_text text NOT NULL,
+      created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+      updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `);
 

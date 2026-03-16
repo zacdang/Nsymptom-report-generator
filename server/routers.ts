@@ -523,8 +523,8 @@ export const appRouter = router({
         // Build markdown report
         let markdown = `# ${response.name} \u2014 \u4f53\u8d28\u89e3\u6790\u62a5\u544a\n\n`;
 
-        if (template?.introParagraph) {
-          markdown += `${template.introParagraph}\n\n`;
+if (template?.templateText) {
+           markdown += `${template.templateText}\n\n`;
         }
 
         markdown += `## \u57fa\u672c\u4fe1\u606f\n\n`;
