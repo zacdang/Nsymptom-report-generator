@@ -239,6 +239,59 @@ async function startServer() {
     }
   );
 
+  // Diagnostic endpoint to check tables and run seed
+  app.get('/api/debug/tables', async (req, res) => {
+    try {
+      const { getDb } = await import("../db");
+      const db = await getDb();
+      if (!db) {
+        return res.json({ error: 'No database connection' });
+      }
+      const { sql } = await import("drizzle-orm");
+      
+      // Check which tables exist
+      const tables = await db.execute(sql`SHOW TABLES`);
+      
+      // Try to create reports table directly
+      let reportsResult = 'skipped';
+      try {
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS reports (
+            id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
+            employee_id int NOT NULL,
+            symptom_input text NOT NULL,
+            markdown_content text NOT NULL,
+            created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+          )
+        `);
+        reportsResult = 'OK';
+      } catch (e: any) {
+        reportsResult = `ERROR: ${e.message}`;
+      }
+      
+      let templatesResult = 'skipped';
+      try {
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS report_templates (
+            id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
+            intro_paragraph text NOT NULL,
+            image_urls text NOT NULL,
+            created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+          )
+        `);
+        templatesResult = 'OK';
+      } catch (e: any) {
+        templatesResult = `ERROR: ${e.message}`;
+      }
+      
+      res.json({ tables, reportsResult, templatesResult });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Health check endpoint
   app.get('/health', async (req, res) => {
     try {
