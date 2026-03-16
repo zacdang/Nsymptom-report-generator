@@ -4,8 +4,30 @@ import { sql } from "drizzle-orm";
 import seedData from "./symptom-analysis-seed.json";
 
 /**
+ * Ensure the symptom_analysis table exists by creating it via raw SQL.
+ * This avoids needing drizzle-kit push/migrate at deploy time.
+ */
+async function ensureTable(db: any) {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS symptom_analysis (
+      id int AUTO_INCREMENT NOT NULL,
+      group_label varchar(500) NOT NULL,
+      symptom_names text NOT NULL,
+      analysis_text text NOT NULL,
+      category varchar(50) NOT NULL,
+      sub_category varchar(50) NOT NULL,
+      display_order int NOT NULL DEFAULT 0,
+      created_at timestamp NOT NULL DEFAULT (now()),
+      updated_at timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT symptom_analysis_id PRIMARY KEY(id)
+    )
+  `);
+}
+
+/**
  * Seed the symptom_analysis table with data from the Excel report.
- * This runs on server startup and uses INSERT IGNORE to avoid duplicates.
+ * This runs on server startup. Creates the table if it doesn't exist,
+ * then inserts data only if the table is empty.
  */
 export async function seedSymptomAnalysis() {
   const db = await getDb();
@@ -15,6 +37,10 @@ export async function seedSymptomAnalysis() {
   }
 
   try {
+    // Create table if it doesn't exist
+    await ensureTable(db);
+    console.log("[Seed] symptom_analysis table ensured");
+
     // Check if table has data
     const existing = await db.select({ count: sql<number>`count(*)` }).from(symptomAnalysis);
     const count = existing[0]?.count || 0;

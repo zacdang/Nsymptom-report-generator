@@ -1,1 +1,1 @@
-web: pnpm railway:start
+web: NODE_ENV=production pnpm start
