@@ -361,6 +361,8 @@ export const appRouter = router({
   questionnaire: router({
     submit: publicProcedure
       .input(z.object({
+        // Employee binding
+        employeeUsername: z.string().min(1, "负责人是必填项"),
         // Basic info
         name: z.string().min(1, "Name is required"),
         gender: z.enum(["male", "female"]),
@@ -406,8 +408,18 @@ export const appRouter = router({
         additionalNotes: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        // Insert questionnaire response
+        // Validate employee username
+        const employee = await db.getEmployeeByUsername(input.employeeUsername);
+        if (!employee) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: `未找到负责人 "${input.employeeUsername}"，请确认用户名是否正确`,
+          });
+        }
+
+        // Insert questionnaire response with employee binding
         const responseId = await db.insertQuestionnaireResponse({
+          employeeId: employee.id,
           name: input.name,
           gender: input.gender,
           ageRange: input.ageRange,
@@ -459,10 +471,25 @@ export const appRouter = router({
         return { success: true, responseId };
       }),
     
+    // Get all customers bound to the current employee
+    myCustomers: employeeProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.employee.role === "admin") {
+          // Admin can see all questionnaires
+          return await db.searchQuestionnaireByName("");
+        }
+        return await db.getQuestionnairesByEmployeeId(ctx.employee.id);
+      }),
+
     search: employeeProcedure
       .input(z.object({ name: z.string().min(1, "Name is required") }))
-      .query(async ({ input }) => {
-        return await db.searchQuestionnaireByName(input.name);
+      .query(async ({ input, ctx }) => {
+        // Admin can search all, employees can only search their own
+        if (ctx.employee.role === "admin") {
+          return await db.searchQuestionnaireByName(input.name);
+        }
+        const myCustomers = await db.getQuestionnairesByEmployeeId(ctx.employee.id);
+        return myCustomers.filter(c => c.name.includes(input.name));
       }),
     
     get: employeeProcedure

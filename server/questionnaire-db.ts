@@ -7,6 +7,7 @@ import {
 import { eq, like, desc } from "drizzle-orm";
 
 export async function insertQuestionnaireResponse(data: {
+  employeeId?: number | null;
   name: string;
   gender: string;
   ageRange: string;
@@ -58,6 +59,16 @@ export async function searchQuestionnaireByName(name: string) {
     .select()
     .from(questionnaireResponses)
     .where(like(questionnaireResponses.name, `%${name}%`))
+    .orderBy(desc(questionnaireResponses.createdAt));
+}
+
+export async function getQuestionnairesByEmployeeId(employeeId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db
+    .select()
+    .from(questionnaireResponses)
+    .where(eq(questionnaireResponses.employeeId, employeeId))
     .orderBy(desc(questionnaireResponses.createdAt));
 }
 

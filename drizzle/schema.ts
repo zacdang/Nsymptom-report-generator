@@ -94,6 +94,7 @@ export type InsertReportTemplate = typeof reportTemplates.$inferInsert;
  */
 export const questionnaireResponses = mysqlTable("questionnaire_responses", {
   id: int("id").autoincrement().primaryKey(),
+  employeeId: int("employee_id"),
   name: varchar("name", { length: 100 }).notNull(),
   gender: mysqlEnum("gender", ["male", "female"]).notNull(),
   ageRange: varchar("age_range", { length: 20 }).notNull(),

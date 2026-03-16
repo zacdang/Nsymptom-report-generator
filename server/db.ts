@@ -331,6 +331,7 @@ export {
   insertQuestionnaireSymptoms,
   insertQuestionnaireLifestyle,
   searchQuestionnaireByName,
+  getQuestionnairesByEmployeeId,
   getQuestionnaireResponse,
   getQuestionnaireSymptoms,
   getQuestionnaireLifestyle,

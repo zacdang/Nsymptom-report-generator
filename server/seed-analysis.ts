@@ -65,6 +65,7 @@ async function ensureAllTables(db: any) {
   await safeExecute(db, "questionnaire_responses", sql`
     CREATE TABLE IF NOT EXISTS questionnaire_responses (
       id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
+      employee_id int,
       name varchar(100) NOT NULL,
       gender enum('male','female') NOT NULL,
       age_range varchar(20) NOT NULL,
@@ -125,6 +126,7 @@ async function ensureAllTables(db: any) {
   // ============ STEP 2: ALTER TABLE for missing columns (best effort) ============
   
   const alterColumns = [
+    "employee_id int",
     "blood_pressure varchar(20)",
     "blood_sugar varchar(20)",
     "body_fat varchar(20)",

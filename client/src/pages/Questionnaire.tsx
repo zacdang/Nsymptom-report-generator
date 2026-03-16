@@ -26,6 +26,7 @@ type Step = 1 | 2 | 3;
 type BodyPart = 'head' | 'body' | 'limbs' | 'mental' | null;
 
 interface FormData {
+  employeeUsername: string;
   name: string;
   gender: 'male' | 'female' | '';
   ageRange: string;
@@ -70,6 +71,7 @@ export default function Questionnaire() {
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart>(null);
   const [formData, setFormData] = useState<FormData>({
+    employeeUsername: "",
     name: "",
     gender: "",
     ageRange: "",
@@ -134,8 +136,8 @@ export default function Questionnaire() {
 
   const handleNext = () => {
     if (currentStep === 1) {
-      if (!formData.name || !formData.gender || !formData.ageRange) {
-        toast.error("请填写必填项：姓名、性别、年龄范围");
+      if (!formData.employeeUsername || !formData.name || !formData.gender || !formData.ageRange) {
+        toast.error("请填写必填项：负责人、姓名、性别、年龄范围");
         return;
       }
     }
@@ -163,8 +165,8 @@ export default function Questionnaire() {
   });
 
   const handleSubmit = async () => {
-    if (!formData.name || !formData.gender || !formData.ageRange) {
-      toast.error("请填写必填项：姓名、性别、年龄范围");
+    if (!formData.employeeUsername || !formData.name || !formData.gender || !formData.ageRange) {
+      toast.error("请填写必填项：负责人、姓名、性别、年龄范围");
       return;
     }
 
@@ -279,6 +281,18 @@ export default function Questionnaire() {
                   <p className="text-sm text-slate-500 mt-1">请填写您的基本健康数据</p>
                 </div>
                 <div className="px-8 py-6 space-y-6">
+                  {/* Employee Username (负责人) */}
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">负责人 <span className="text-red-500">*</span></Label>
+                    <Input
+                      value={formData.employeeUsername}
+                      onChange={(e) => setFormData({ ...formData, employeeUsername: e.target.value })}
+                      placeholder="请输入负责人用户名"
+                      className="mt-1.5"
+                    />
+                    <p className="text-xs text-slate-400 mt-1">请填写推荐您填写此问卷的伙伴用户名</p>
+                  </div>
+
                   {/* Name */}
                   <div>
                     <Label className="text-sm font-medium text-slate-700">姓名 <span className="text-red-500">*</span></Label>
