@@ -32,9 +32,9 @@ export default function ReportsList({ employeeId }: ReportsListProps) {
               {reports.map((report) => (
                 <TableRow key={report.id}>
                   <TableCell>{report.id}</TableCell>
-                  <TableCell className="max-w-md truncate">{report.symptomInput}</TableCell>
-                  <TableCell>{format(new Date(report.createdAt), "PPp")}</TableCell>
-                  <TableCell>{format(new Date(report.updatedAt), "PPp")}</TableCell>
+                  <TableCell className="max-w-md truncate">{report.symptoms}</TableCell>
+                  <TableCell>{report.createdAt ? format(new Date(report.createdAt), "PPp") : '-'}</TableCell>
+                  <TableCell>{report.updatedAt ? format(new Date(report.updatedAt), "PPp") : '-'}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

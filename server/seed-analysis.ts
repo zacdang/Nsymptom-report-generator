@@ -45,10 +45,10 @@ async function ensureAllTables(db: any) {
     CREATE TABLE IF NOT EXISTS reports (
       id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
       employee_id int NOT NULL,
-      symptom_input text NOT NULL,
-      markdown_content text NOT NULL,
-      created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      symptoms json NOT NULL,
+      generated_text text,
+      created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+      updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `);
 

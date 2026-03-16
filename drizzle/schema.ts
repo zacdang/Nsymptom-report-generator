@@ -65,10 +65,10 @@ export type InsertEmployee = typeof employees.$inferInsert;
 export const reports = mysqlTable("reports", {
   id: int("id").autoincrement().primaryKey(),
   employeeId: int("employee_id").notNull(),
-  symptomInput: text("symptom_input").notNull(),
-  markdownContent: text("markdown_content").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  symptoms: text("symptoms").notNull(),
+  generatedText: text("generated_text"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
 });
 
 export type Report = typeof reports.$inferSelect;

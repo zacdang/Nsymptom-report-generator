@@ -259,10 +259,10 @@ async function startServer() {
           CREATE TABLE IF NOT EXISTS reports (
             id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
             employee_id int NOT NULL,
-            symptom_input text NOT NULL,
-            markdown_content text NOT NULL,
-            created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            symptoms json NOT NULL,
+            generated_text text,
+            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
           )
         `);
         reportsResult = 'OK';
@@ -322,7 +322,26 @@ async function startServer() {
         describeReports = `ERROR: ${e.message}`;
       }
 
-      res.json({ tables, reportsResult, templatesResult, rawReportsQuery, rawTemplatesQuery, drizzleReportsQuery, describeReports });
+      // Describe report_templates table
+      let describeTemplates = 'skipped';
+      try {
+        const desc2 = await db.execute(sql`DESCRIBE report_templates`);
+        describeTemplates = JSON.stringify(desc2[0]);
+      } catch (e: any) {
+        describeTemplates = `ERROR: ${e.message}`;
+      }
+
+      // Try drizzle ORM query on report_templates
+      let drizzleTemplatesQuery = 'skipped';
+      try {
+        const { reportTemplates: templatesTable } = await import("../drizzle/schema");
+        const rows = await db.select().from(templatesTable).limit(1);
+        drizzleTemplatesQuery = `OK - rows: ${JSON.stringify(rows)}`;
+      } catch (e: any) {
+        drizzleTemplatesQuery = `ERROR: ${e.message}`;
+      }
+
+      res.json({ tables, reportsResult, templatesResult, rawReportsQuery, rawTemplatesQuery, drizzleReportsQuery, drizzleTemplatesQuery, describeReports, describeTemplates });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

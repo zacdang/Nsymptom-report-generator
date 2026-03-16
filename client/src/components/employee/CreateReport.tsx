@@ -103,8 +103,8 @@ export default function CreateReport({ employeeId, onBack }: CreateReportProps) 
 
     createReportMutation.mutate({
       employeeId,
-      symptomInput: mode === 'questionnaire' ? `[问卷生成] ${searchName}` : symptomInput,
-      markdownContent: generatedMarkdown,
+      symptoms: mode === 'questionnaire' ? `[问卷生成] ${searchName}` : symptomInput,
+      generatedText: generatedMarkdown,
     });
   };
 

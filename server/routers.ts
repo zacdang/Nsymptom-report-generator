@@ -295,8 +295,8 @@ export const appRouter = router({
     create: employeeProcedure
       .input(z.object({
         employeeId: z.number(),
-        symptomInput: z.string().min(1, "Symptom input is required"),
-        markdownContent: z.string().min(1, "Report content is required"),
+        symptoms: z.string().min(1, "Symptom input is required"),
+        generatedText: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         // Employees can only create reports for themselves
@@ -313,7 +313,7 @@ export const appRouter = router({
     update: employeeProcedure
       .input(z.object({
         id: z.number(),
-        markdownContent: z.string().min(1, "Report content is required"),
+        generatedText: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const report = await db.getReportById(input.id);
@@ -333,7 +333,7 @@ export const appRouter = router({
           });
         }
         
-        await db.updateReport(input.id, { markdownContent: input.markdownContent });
+        await db.updateReport(input.id, { generatedText: input.generatedText });
         return { success: true };
       }),
     
