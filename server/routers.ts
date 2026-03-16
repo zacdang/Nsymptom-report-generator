@@ -14,14 +14,9 @@ import { EMPLOYEE_COOKIE_NAME } from "../shared/employeeConst";
 import cookie from "cookie";
 
 // Input validation schemas
-const usernameSchema = z.string()
-  .min(3, "Username must be at least 3 characters")
-  .max(50, "Username must be less than 50 characters")
-  .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, _ and -");
+const usernameSchema = z.string();
 
-const passwordSchema = z.string()
-  .min(8, "Password must be at least 8 characters")
-  .max(100, "Password must be less than 100 characters");
+const passwordSchema = z.string();
 
 const symptomNameSchema = z.string()
   .trim()
