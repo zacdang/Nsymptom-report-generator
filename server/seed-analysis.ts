@@ -4,30 +4,41 @@ import { sql } from "drizzle-orm";
 import seedData from "./symptom-analysis-seed.json";
 
 /**
+ * Safely execute a SQL statement, logging success or error.
+ */
+async function safeExecute(db: any, label: string, query: any) {
+  try {
+    await db.execute(query);
+    console.log(`[Seed] ${label}: OK`);
+  } catch (e: any) {
+    console.error(`[Seed] ${label}: ERROR - ${e.message}`);
+  }
+}
+
+/**
  * Ensure all required tables exist by creating them via raw SQL.
  * This avoids needing drizzle-kit push/migrate at deploy time.
  */
 async function ensureAllTables(db: any) {
-  // symptom_analysis table
-  await db.execute(sql`
+  console.log("[Seed] Starting table creation...");
+
+  await safeExecute(db, "symptom_analysis", sql`
     CREATE TABLE IF NOT EXISTS symptom_analysis (
-      id int AUTO_INCREMENT NOT NULL,
+      id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
       group_label varchar(500) NOT NULL,
       symptom_names text NOT NULL,
       analysis_text text NOT NULL,
       category varchar(50) NOT NULL,
       sub_category varchar(50) NOT NULL,
       display_order int NOT NULL DEFAULT 0,
-      created_at timestamp NOT NULL DEFAULT (now()),
-      updated_at timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
-      CONSTRAINT symptom_analysis_id PRIMARY KEY(id)
+      created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `);
 
-  // questionnaire_responses table
-  await db.execute(sql`
+  await safeExecute(db, "questionnaire_responses", sql`
     CREATE TABLE IF NOT EXISTS questionnaire_responses (
-      id int AUTO_INCREMENT NOT NULL,
+      id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
       name varchar(100) NOT NULL,
       gender enum('male','female') NOT NULL,
       age_range varchar(20) NOT NULL,
@@ -38,78 +49,65 @@ async function ensureAllTables(db: any) {
       blood_sugar varchar(20),
       body_fat varchar(20),
       additional_notes text,
-      created_at timestamp NOT NULL DEFAULT (now()),
-      updated_at timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
-      CONSTRAINT questionnaire_responses_id PRIMARY KEY(id)
+      created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `);
 
-  // Ensure all columns exist (ALTER TABLE for columns that may be missing)
-  const alterQueries = [
-    "ALTER TABLE questionnaire_responses ADD COLUMN IF NOT EXISTS blood_pressure varchar(20)",
-    "ALTER TABLE questionnaire_responses ADD COLUMN IF NOT EXISTS blood_sugar varchar(20)",
-    "ALTER TABLE questionnaire_responses ADD COLUMN IF NOT EXISTS body_fat varchar(20)",
-    "ALTER TABLE questionnaire_responses ADD COLUMN IF NOT EXISTS additional_notes text",
+  // Try adding columns that might be missing (ignore errors if they already exist)
+  const alterColumns = [
+    { col: "blood_pressure", def: "varchar(20)" },
+    { col: "blood_sugar", def: "varchar(20)" },
+    { col: "body_fat", def: "varchar(20)" },
+    { col: "additional_notes", def: "text" },
   ];
-  for (const q of alterQueries) {
+  for (const { col, def } of alterColumns) {
     try {
-      await db.execute(sql.raw(q));
+      await db.execute(sql.raw(`ALTER TABLE questionnaire_responses ADD COLUMN ${col} ${def}`));
+      console.log(`[Seed] Added column ${col} to questionnaire_responses`);
     } catch (e: any) {
-      // Ignore "Duplicate column name" errors
-      if (!e.message?.includes('Duplicate column')) {
-        console.warn(`[Seed] ALTER TABLE warning: ${e.message}`);
+      // Column already exists - this is fine
+      if (e.message?.includes('Duplicate column')) {
+        // silently ignore
+      } else {
+        console.warn(`[Seed] ALTER TABLE questionnaire_responses ADD ${col}: ${e.message}`);
       }
     }
   }
 
-  // reports table
-  try {
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS reports (
-        id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
-        employee_id int NOT NULL,
-        symptom_input text NOT NULL,
-        markdown_content text NOT NULL,
-        created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      )
-    `);
-    console.log("[Seed] reports table ensured");
-  } catch (e: any) {
-    console.error("[Seed] Error creating reports table:", e.message);
-  }
-
-  // report_templates table
-  try {
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS report_templates (
-        id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
-        intro_paragraph text NOT NULL,
-        image_urls text NOT NULL,
-        created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      )
-    `);
-    console.log("[Seed] report_templates table ensured");
-  } catch (e: any) {
-    console.error("[Seed] Error creating report_templates table:", e.message);
-  }
-
-  // questionnaire_symptoms table
-  await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS questionnaire_symptoms (
-      id int AUTO_INCREMENT NOT NULL,
-      response_id int NOT NULL,
-      symptom_name varchar(255) NOT NULL,
-      category enum('head','body','limbs','mental') NOT NULL,
-      CONSTRAINT questionnaire_symptoms_id PRIMARY KEY(id)
+  await safeExecute(db, "reports", sql`
+    CREATE TABLE IF NOT EXISTS reports (
+      id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
+      employee_id int NOT NULL,
+      symptom_input text NOT NULL,
+      markdown_content text NOT NULL,
+      created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `);
 
-  // questionnaire_lifestyle table
-  await db.execute(sql`
+  await safeExecute(db, "report_templates", sql`
+    CREATE TABLE IF NOT EXISTS report_templates (
+      id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
+      intro_paragraph text NOT NULL,
+      image_urls text NOT NULL,
+      created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+
+  await safeExecute(db, "questionnaire_symptoms", sql`
+    CREATE TABLE IF NOT EXISTS questionnaire_symptoms (
+      id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
+      response_id int NOT NULL,
+      symptom_name varchar(255) NOT NULL,
+      category enum('head','body','limbs','mental') NOT NULL
+    )
+  `);
+
+  await safeExecute(db, "questionnaire_lifestyle", sql`
     CREATE TABLE IF NOT EXISTS questionnaire_lifestyle (
-      id int AUTO_INCREMENT NOT NULL,
+      id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
       response_id int NOT NULL,
       exercise_participation varchar(10),
       exercise_type varchar(255),
@@ -134,10 +132,11 @@ async function ensureAllTables(db: any) {
       coarse_grain_frequency varchar(255),
       work_environment text,
       medications_allergies text,
-      medical_history text,
-      CONSTRAINT questionnaire_lifestyle_id PRIMARY KEY(id)
+      medical_history text
     )
   `);
+
+  console.log("[Seed] All table creation attempts completed");
 }
 
 /**
@@ -155,7 +154,6 @@ export async function seedSymptomAnalysis() {
   try {
     // Create all tables if they don't exist
     await ensureAllTables(db);
-    console.log("[Seed] All tables ensured");
 
     // Check if table has data
     const existing = await db.select({ count: sql<number>`count(*)` }).from(symptomAnalysis);
