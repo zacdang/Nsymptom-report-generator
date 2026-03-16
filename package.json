@@ -10,7 +10,7 @@
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
-    "db:push": "drizzle-kit push",
+    "db:push": "drizzle-kit push --force",
     "railway:start": "pnpm db:push && NODE_ENV=production node dist/index.js"
   },
   "dependencies": {
