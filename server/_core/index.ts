@@ -286,7 +286,43 @@ async function startServer() {
         templatesResult = `ERROR: ${e.message}`;
       }
       
-      res.json({ tables, reportsResult, templatesResult });
+      // Try raw SQL queries on reports and report_templates
+      let rawReportsQuery = 'skipped';
+      try {
+        const rows = await db.execute(sql`SELECT * FROM reports LIMIT 1`);
+        rawReportsQuery = `OK - rows: ${JSON.stringify(rows[0])}`;
+      } catch (e: any) {
+        rawReportsQuery = `ERROR: ${e.message}`;
+      }
+      
+      let rawTemplatesQuery = 'skipped';
+      try {
+        const rows = await db.execute(sql`SELECT * FROM report_templates LIMIT 1`);
+        rawTemplatesQuery = `OK - rows: ${JSON.stringify(rows[0])}`;
+      } catch (e: any) {
+        rawTemplatesQuery = `ERROR: ${e.message}`;
+      }
+      
+      // Try drizzle ORM query on reports
+      let drizzleReportsQuery = 'skipped';
+      try {
+        const { reports: reportsTable } = await import("../drizzle/schema");
+        const rows = await db.select().from(reportsTable).limit(1);
+        drizzleReportsQuery = `OK - rows: ${JSON.stringify(rows)}`;
+      } catch (e: any) {
+        drizzleReportsQuery = `ERROR: ${e.message}`;
+      }
+
+      // Describe reports table
+      let describeReports = 'skipped';
+      try {
+        const desc = await db.execute(sql`DESCRIBE reports`);
+        describeReports = JSON.stringify(desc[0]);
+      } catch (e: any) {
+        describeReports = `ERROR: ${e.message}`;
+      }
+
+      res.json({ tables, reportsResult, templatesResult, rawReportsQuery, rawTemplatesQuery, drizzleReportsQuery, describeReports });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
