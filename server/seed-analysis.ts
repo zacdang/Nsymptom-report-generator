@@ -18,10 +18,15 @@ async function safeExecute(db: any, label: string, query: any) {
 /**
  * Ensure all required tables exist by creating them via raw SQL.
  * This avoids needing drizzle-kit push/migrate at deploy time.
+ * 
+ * IMPORTANT: All CREATE TABLE statements run first, then ALTER TABLE statements.
+ * This ensures that even if ALTER TABLE fails, all tables are created.
  */
 async function ensureAllTables(db: any) {
   console.log("[Seed] Starting table creation...");
 
+  // ============ STEP 1: Create all tables first ============
+  
   await safeExecute(db, "symptom_analysis", sql`
     CREATE TABLE IF NOT EXISTS symptom_analysis (
       id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
@@ -31,6 +36,27 @@ async function ensureAllTables(db: any) {
       category varchar(50) NOT NULL,
       sub_category varchar(50) NOT NULL,
       display_order int NOT NULL DEFAULT 0,
+      created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+
+  await safeExecute(db, "reports", sql`
+    CREATE TABLE IF NOT EXISTS reports (
+      id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
+      employee_id int NOT NULL,
+      symptom_input text NOT NULL,
+      markdown_content text NOT NULL,
+      created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+
+  await safeExecute(db, "report_templates", sql`
+    CREATE TABLE IF NOT EXISTS report_templates (
+      id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
+      intro_paragraph text NOT NULL,
+      image_urls text NOT NULL,
       created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
@@ -49,48 +75,6 @@ async function ensureAllTables(db: any) {
       blood_sugar varchar(20),
       body_fat varchar(20),
       additional_notes text,
-      created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    )
-  `);
-
-  // Try adding columns that might be missing (ignore errors if they already exist)
-  const alterColumns = [
-    { col: "blood_pressure", def: "varchar(20)" },
-    { col: "blood_sugar", def: "varchar(20)" },
-    { col: "body_fat", def: "varchar(20)" },
-    { col: "additional_notes", def: "text" },
-  ];
-  for (const { col, def } of alterColumns) {
-    try {
-      await db.execute(sql.raw(`ALTER TABLE questionnaire_responses ADD COLUMN ${col} ${def}`));
-      console.log(`[Seed] Added column ${col} to questionnaire_responses`);
-    } catch (e: any) {
-      // Column already exists - this is fine
-      if (e.message?.includes('Duplicate column')) {
-        // silently ignore
-      } else {
-        console.warn(`[Seed] ALTER TABLE questionnaire_responses ADD ${col}: ${e.message}`);
-      }
-    }
-  }
-
-  await safeExecute(db, "reports", sql`
-    CREATE TABLE IF NOT EXISTS reports (
-      id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
-      employee_id int NOT NULL,
-      symptom_input text NOT NULL,
-      markdown_content text NOT NULL,
-      created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    )
-  `);
-
-  await safeExecute(db, "report_templates", sql`
-    CREATE TABLE IF NOT EXISTS report_templates (
-      id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
-      intro_paragraph text NOT NULL,
-      image_urls text NOT NULL,
       created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
@@ -136,7 +120,27 @@ async function ensureAllTables(db: any) {
     )
   `);
 
-  console.log("[Seed] All table creation attempts completed");
+  console.log("[Seed] All CREATE TABLE statements completed");
+
+  // ============ STEP 2: ALTER TABLE for missing columns (best effort) ============
+  
+  const alterColumns = [
+    "blood_pressure varchar(20)",
+    "blood_sugar varchar(20)",
+    "body_fat varchar(20)",
+    "additional_notes text",
+  ];
+  for (const colDef of alterColumns) {
+    const colName = colDef.split(" ")[0];
+    try {
+      await db.execute(sql.raw(`ALTER TABLE questionnaire_responses ADD COLUMN ${colDef}`));
+      console.log(`[Seed] Added column ${colName} to questionnaire_responses`);
+    } catch (e: any) {
+      // Silently ignore all ALTER TABLE errors (column already exists, etc.)
+    }
+  }
+
+  console.log("[Seed] All table creation and alteration attempts completed");
 }
 
 /**
