@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
@@ -35,7 +32,7 @@ export default function Login() {
   };
 
   return (
-    <div 
+    <div
       className="min-h-screen flex flex-col"
       style={{
         backgroundImage: 'url(/login-bg.webp)',
@@ -44,56 +41,75 @@ export default function Login() {
         backgroundRepeat: 'no-repeat'
       }}
     >
-      {/* Top area - shows background image */}
-      <div className="flex-1" />
+      {/* Top spacer - 3 parts */}
+      <div style={{ flex: 3 }} />
 
-      {/* Login card pinned to bottom */}
-      <div className="w-full flex justify-center pb-6 px-4">
-        <Card className="w-full max-w-sm bg-white/95 backdrop-blur-sm shadow-2xl">
-          <CardHeader className="text-center pb-2 pt-4">
-            <img src="/logo.jpg" alt="Logo" className="h-12 w-auto mx-auto mb-1" />
-            <CardTitle className="text-sm">症状报告生成系统</CardTitle>
-            <CardDescription className="text-xs">登录您的账户</CardDescription>
-          </CardHeader>
-          <CardContent className="pb-4 pt-0">
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <div className="space-y-1">
-                <Label htmlFor="username" className="text-xs">用户名</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                  autoComplete="username"
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="password" className="text-xs">密码</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  autoComplete="current-password"
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div className="pt-2 flex justify-center">
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="px-6 py-1.5 text-xs font-medium text-white bg-primary hover:bg-primary/90 rounded-md shadow disabled:opacity-50 transition-colors"
-                >
-                  {isLoading ? "登录中..." : "登录"}
-                </button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+      {/* Tiny login card */}
+      <div className="w-full flex justify-center px-4">
+        <div
+          className="backdrop-blur-sm shadow-2xl"
+          style={{
+            background: 'rgba(255,255,255,0.95)',
+            borderRadius: '10px',
+            width: '260px',
+            padding: '14px 18px 16px',
+          }}
+        >
+          <div className="text-center mb-2.5">
+            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#2d7a3a', marginBottom: '4px' }}>美食美塑</div>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: '#333', marginBottom: '1px' }}>症状报告生成系统</div>
+            <div style={{ fontSize: '9px', color: '#888' }}>登录您的账户</div>
+          </div>
+          <form onSubmit={handleSubmit}>
+            <div className="mb-2">
+              <label style={{ display: 'block', fontSize: '9px', fontWeight: 500, color: '#555', marginBottom: '2px' }}>用户名</label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                autoComplete="username"
+                className="w-full outline-none focus:border-green-500"
+                style={{ height: '26px', border: '1px solid #ddd', borderRadius: '4px', padding: '0 8px', fontSize: '11px' }}
+              />
+            </div>
+            <div className="mb-2">
+              <label style={{ display: 'block', fontSize: '9px', fontWeight: 500, color: '#555', marginBottom: '2px' }}>密码</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+                className="w-full outline-none focus:border-green-500"
+                style={{ height: '26px', border: '1px solid #ddd', borderRadius: '4px', padding: '0 8px', fontSize: '11px' }}
+              />
+            </div>
+            <div className="flex justify-center mt-2.5">
+              <button
+                type="submit"
+                disabled={isLoading}
+                style={{
+                  padding: '4px 20px',
+                  fontSize: '10px',
+                  fontWeight: 500,
+                  color: 'white',
+                  background: '#1a1a1a',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  opacity: isLoading ? 0.5 : 1,
+                }}
+              >
+                {isLoading ? "登录中..." : "登录"}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
+
+      {/* Bottom spacer - 1 part */}
+      <div style={{ flex: 1 }} />
     </div>
   );
 }
