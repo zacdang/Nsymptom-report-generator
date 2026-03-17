@@ -326,7 +326,7 @@ export default function Questionnaire() {
       <div className="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between mb-3">
-            <h1 className="text-xl font-bold text-slate-800 tracking-tight">健康评估问卷</h1>
+            <h1 className="text-xl font-bold text-slate-800 tracking-tight">美食美塑®专利体质解析问卷</h1>
             <span className="text-sm text-slate-400">{currentStep} / 3</span>
           </div>
 
