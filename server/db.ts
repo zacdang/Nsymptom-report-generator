@@ -335,4 +335,5 @@ export {
   getQuestionnaireResponse,
   getQuestionnaireSymptoms,
   getQuestionnaireLifestyle,
+  deleteQuestionnaireResponse,
 } from "./questionnaire-db";

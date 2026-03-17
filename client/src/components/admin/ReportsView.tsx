@@ -7,13 +7,26 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { trpc } from "@/lib/trpc";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import { ChevronDown, ChevronUp, Eye, FileText } from "lucide-react";
+import { ChevronDown, ChevronUp, Eye, FileText, Trash2 } from "lucide-react";
 
 export default function ReportsView() {
+  const utils = trpc.useUtils();
   const { data: questionnaires, isLoading } = trpc.questionnaire.myCustomers.useQuery();
   const { data: employees } = trpc.admin.employees.list.useQuery();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+
+  const deleteMutation = trpc.questionnaire.delete.useMutation({
+    onSuccess: () => {
+      utils.questionnaire.myCustomers.invalidate();
+    },
+  });
+
+  const handleDelete = (id: number, name: string) => {
+    if (confirm(`确定要删除 "${name}" 的问卷记录吗？此操作不可撤销。`)) {
+      deleteMutation.mutate({ id });
+    }
+  };
 
   // Fetch detail for selected questionnaire
   const { data: detail, isLoading: isLoadingDetail } = trpc.questionnaire.get.useQuery(
@@ -124,14 +137,24 @@ export default function ReportsView() {
                         {formatDate(item.createdAt)}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedId(item.id)}
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          详情
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedId(item.id)}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            详情
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleDelete(item.id, item.name)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

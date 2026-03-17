@@ -104,3 +104,13 @@ export async function getQuestionnaireLifestyle(responseId: number) {
   
   return result[0] || null;
 }
+
+export async function deleteQuestionnaireResponse(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // Delete related data first
+  await db.delete(questionnaireSymptoms).where(eq(questionnaireSymptoms.responseId, id));
+  await db.delete(questionnaireLifestyle).where(eq(questionnaireLifestyle.responseId, id));
+  // Delete the response itself
+  await db.delete(questionnaireResponses).where(eq(questionnaireResponses.id, id));
+}

@@ -510,6 +510,21 @@ export const appRouter = router({
         };
       }),
 
+    // Admin-only delete questionnaire response
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const response = await db.getQuestionnaireResponse(input.id);
+        if (!response) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "问卷记录不存在",
+          });
+        }
+        await db.deleteQuestionnaireResponse(input.id);
+        return { success: true };
+      }),
+
     generateReport: employeeProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
