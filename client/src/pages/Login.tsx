@@ -39,7 +39,7 @@ export default function Login() {
     <div 
       className="min-h-screen flex items-center justify-center"
       style={{
-        backgroundImage: 'url(/login-page-background.jpg)',
+        backgroundImage: 'url(/login-bg.webp)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat'
@@ -75,9 +75,11 @@ export default function Login() {
                 autoComplete="current-password"
               />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "登录中..." : "登录"}
-            </Button>
+            <div className="pt-6 flex justify-center">
+              <Button type="submit" className="px-8 py-2 text-sm" disabled={isLoading}>
+                {isLoading ? "登录中..." : "登录"}
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>
