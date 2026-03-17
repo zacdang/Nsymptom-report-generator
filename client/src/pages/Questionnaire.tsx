@@ -22,7 +22,7 @@ import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { trpc } from "../lib/trpc";
 
-type Step = 1 | 2 | 3;
+type Step = 0 | 1 | 2 | 3;
 type BodyPart = 'head' | 'body' | 'limbs' | 'mental' | null;
 
 interface FormData {
@@ -68,7 +68,7 @@ const stepLabels = ["基本信息", "症状选择", "生活习惯"];
 
 export default function Questionnaire() {
   const [, setLocation] = useLocation();
-  const [currentStep, setCurrentStep] = useState<Step>(1);
+  const [currentStep, setCurrentStep] = useState<Step>(0);
   const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart>(null);
   const [formData, setFormData] = useState<FormData>({
     employeeUsername: "",
@@ -134,10 +134,19 @@ export default function Questionnaire() {
     }));
   };
 
+  const handleStartQuestionnaire = () => {
+    if (!formData.employeeUsername || !formData.name) {
+      toast.error("请填写姓名和负责人");
+      return;
+    }
+    setCurrentStep(1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleNext = () => {
     if (currentStep === 1) {
-      if (!formData.employeeUsername || !formData.name || !formData.gender || !formData.ageRange) {
-        toast.error("请填写必填项：负责人、姓名、性别、年龄范围");
+      if (!formData.gender || !formData.ageRange) {
+        toast.error("请填写必填项：性别、年龄范围");
         return;
       }
     }
@@ -157,7 +166,48 @@ export default function Questionnaire() {
   const submitMutation = trpc.questionnaire.submit.useMutation({
     onSuccess: () => {
       toast.success("问卷提交成功！感谢您的填写。");
-      setTimeout(() => setLocation("/"), 1500);
+      setTimeout(() => {
+        setFormData({
+          employeeUsername: "",
+          name: "",
+          gender: "",
+          ageRange: "",
+          height: "",
+          weight: "",
+          waist: "",
+          bloodPressure: "",
+          bloodSugar: "",
+          bodyFat: "",
+          selectedSymptoms: [],
+          exerciseParticipation: "",
+          exerciseType: "",
+          exerciseFrequency: "",
+          wakeTime: "",
+          napTime: "",
+          sleepTime: "",
+          hungriestTime: "",
+          mostTiredTime: "",
+          lifestyleHabits: [],
+          breakfastTime: "",
+          breakfastHas: "",
+          lunchTime: "",
+          lunchHas: "",
+          dinnerTime: "",
+          dinnerHas: "",
+          lateNightSnackTime: "",
+          lateNightSnackHas: "",
+          dietaryPreferences: [],
+          unsuitableFoods: "",
+          fruitFrequency: "",
+          coarseGrainFrequency: "",
+          workEnvironment: [],
+          medicationsAllergies: "",
+          medicalHistory: [],
+          additionalNotes: "",
+        });
+        setCurrentStep(0);
+        setSelectedBodyPart(null);
+      }, 1500);
     },
     onError: (error: any) => {
       toast.error(error.message || "提交失败，请重试");
@@ -166,7 +216,7 @@ export default function Questionnaire() {
 
   const handleSubmit = async () => {
     if (!formData.employeeUsername || !formData.name || !formData.gender || !formData.ageRange) {
-      toast.error("请填写必填项：负责人、姓名、性别、年龄范围");
+      toast.error("请填写必填项");
       return;
     }
 
@@ -208,6 +258,61 @@ export default function Questionnaire() {
     limbs: '四肢症状',
     mental: '精神状态',
   };
+
+  // Cover page (step 0)
+  if (currentStep === 0) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6"
+        style={{
+          backgroundImage: 'url(/questionnaire-cover.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl p-8 max-w-md w-full space-y-6"
+        >
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl font-bold text-slate-800">健康评估问卷</h1>
+            <p className="text-sm text-slate-500">请填写以下信息开始问卷</p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium text-slate-700">姓名 <span className="text-red-500">*</span></Label>
+              <Input
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="请输入您的姓名"
+                className="mt-1.5"
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-slate-700">负责人 <span className="text-red-500">*</span></Label>
+              <Input
+                value={formData.employeeUsername}
+                onChange={(e) => setFormData({ ...formData, employeeUsername: e.target.value })}
+                placeholder="请输入负责人用户名"
+                className="mt-1.5"
+              />
+              <p className="text-xs text-slate-400 mt-1">请填写推荐您填写此问卷的伙伴用户名</p>
+            </div>
+          </div>
+
+          <Button
+            onClick={handleStartQuestionnaire}
+            className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base"
+          >
+            开始问卷
+          </Button>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -281,26 +386,9 @@ export default function Questionnaire() {
                   <p className="text-sm text-slate-500 mt-1">请填写您的基本健康数据</p>
                 </div>
                 <div className="px-8 py-6 space-y-6">
-                  {/* Employee Username (负责人) */}
-                  <div>
-                    <Label className="text-sm font-medium text-slate-700">负责人 <span className="text-red-500">*</span></Label>
-                    <Input
-                      value={formData.employeeUsername}
-                      onChange={(e) => setFormData({ ...formData, employeeUsername: e.target.value })}
-                      placeholder="请输入负责人用户名"
-                      className="mt-1.5"
-                    />
-                    <p className="text-xs text-slate-400 mt-1">请填写推荐您填写此问卷的伙伴用户名</p>
-                  </div>
-
-                  {/* Name */}
-                  <div>
-                    <Label className="text-sm font-medium text-slate-700">姓名 <span className="text-red-500">*</span></Label>
-                    <Input
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="mt-1.5"
-                    />
+                  {/* Display name (read-only, set from cover page) */}
+                  <div className="bg-slate-50 rounded-lg px-4 py-3">
+                    <p className="text-sm text-slate-500">填写人：<span className="font-semibold text-slate-800">{formData.name}</span> · 负责人：<span className="font-semibold text-slate-800">{formData.employeeUsername}</span></p>
                   </div>
 
                   {/* Gender */}
