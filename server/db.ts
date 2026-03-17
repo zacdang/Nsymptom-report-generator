@@ -135,10 +135,10 @@ export async function getUserByOpenId(openId: string) {
 }
 
 // Employee management functions
-export async function getEmployeeByUsername(username: string): Promise<Employee | undefined> {
+export async function getEmployeeByName(name: string): Promise<Employee | undefined> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.select().from(employees).where(eq(employees.username, username)).limit(1);
+  const result = await db.select().from(employees).where(eq(employees.name, name)).limit(1);
   return result[0];
 }
 

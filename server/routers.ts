@@ -14,7 +14,7 @@ import { EMPLOYEE_COOKIE_NAME } from "../shared/employeeConst";
 import cookie from "cookie";
 
 // Input validation schemas
-const usernameSchema = z.string();
+const nameSchema = z.string().min(1, "Name is required").max(100);
 
 const passwordSchema = z.string();
 
@@ -41,16 +41,16 @@ export const appRouter = router({
   employee: router({
     login: publicProcedure
       .input(z.object({ 
-        username: usernameSchema, 
+        name: z.string(), 
         password: z.string() // Don't validate password on login, only on creation
       }))
       .mutation(async ({ input, ctx }) => {
-        const employee = await authenticateEmployee(input.username, input.password);
+        const employee = await authenticateEmployee(input.name, input.password);
         
         if (!employee) {
           throw new TRPCError({
             code: "UNAUTHORIZED",
-            message: "Invalid username or password",
+            message: "姓名或密码错误",
           });
         }
         
@@ -61,7 +61,6 @@ export const appRouter = router({
           success: true,
           employee: {
             id: employee.id,
-            username: employee.username,
             name: employee.name,
             role: employee.role,
           },
@@ -97,7 +96,6 @@ export const appRouter = router({
       
       return {
         id: employee.id,
-        username: employee.username,
         name: employee.name,
         role: employee.role,
       };
@@ -194,24 +192,23 @@ export const appRouter = router({
       
       create: adminProcedure
         .input(z.object({
-          username: usernameSchema,
           password: passwordSchema,
           name: z.string().min(1, "Name is required").max(100),
           role: z.enum(["admin", "employee"]),
         }))
         .mutation(async ({ input }) => {
-          // Check if username already exists
-          const existing = await db.getEmployeeByUsername(input.username);
+          // Check if name already exists
+          const existing = await db.getEmployeeByName(input.name);
           if (existing) {
             throw new TRPCError({
               code: "CONFLICT",
-              message: "Username already exists",
+              message: "该姓名已存在",
             });
           }
           
           const passwordHash = await hashPassword(input.password);
           return await db.createEmployee({
-            username: input.username,
+            username: input.name,
             passwordHash,
             name: input.name,
             role: input.role,
@@ -362,7 +359,7 @@ export const appRouter = router({
     submit: publicProcedure
       .input(z.object({
         // Employee binding
-        employeeUsername: z.string().min(1, "负责人是必填项"),
+        employeeName: z.string().min(1, "负责人是必填项"),
         // Basic info
         name: z.string().min(1, "Name is required"),
         gender: z.enum(["male", "female"]),
@@ -408,12 +405,12 @@ export const appRouter = router({
         additionalNotes: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        // Validate employee username
-        const employee = await db.getEmployeeByUsername(input.employeeUsername);
+        // Validate employee name
+        const employee = await db.getEmployeeByName(input.employeeName);
         if (!employee) {
           throw new TRPCError({
             code: "NOT_FOUND",
-            message: `未找到负责人 "${input.employeeUsername}"，请确认用户名是否正确`,
+            message: `未找到负责人 "${input.employeeName}"，请确认姓名是否正确`,
           });
         }
 

@@ -14,7 +14,6 @@ export default function EmployeesManagement() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [resetPasswordEmployee, setResetPasswordEmployee] = useState<any>(null);
   const [formData, setFormData] = useState({
-    username: "",
     password: "",
     name: "",
     role: "employee" as "admin" | "employee",
@@ -29,7 +28,7 @@ export default function EmployeesManagement() {
       toast.success("伙伴创建成功");
       utils.admin.employees.list.invalidate();
       setIsCreateOpen(false);
-      setFormData({ username: "", password: "", name: "", role: "employee" });
+      setFormData({ password: "", name: "", role: "employee" });
     },
     onError: (error) => {
       toast.error(error.message || "创建伙伴失败");
@@ -95,11 +94,11 @@ export default function EmployeesManagement() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username">用户名</Label>
+                <Label htmlFor="name">姓名</Label>
                 <Input
-                  id="username"
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
                 />
               </div>
@@ -110,15 +109,6 @@ export default function EmployeesManagement() {
                   type="password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="name">姓名</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
                 />
               </div>
@@ -192,7 +182,6 @@ export default function EmployeesManagement() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>用户名</TableHead>
                 <TableHead>姓名</TableHead>
                 <TableHead>角色</TableHead>
                 <TableHead className="text-right">操作</TableHead>
@@ -201,8 +190,7 @@ export default function EmployeesManagement() {
             <TableBody>
               {employees?.map((employee) => (
                 <TableRow key={employee.id}>
-                  <TableCell className="font-medium">{employee.username}</TableCell>
-                  <TableCell>{employee.name}</TableCell>
+                  <TableCell className="font-medium">{employee.name}</TableCell>
                   <TableCell className="capitalize">{employee.role}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

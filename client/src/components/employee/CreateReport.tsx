@@ -109,7 +109,7 @@ export default function CreateReport({ employeeId, onBack }: CreateReportProps) 
             </div>
           ) : (
             <p className="text-sm text-gray-500 text-center py-4">
-              暂无客户。客户填写问卷时需要填写您的用户名作为负责人。
+              暂无客户。客户填写问卷时需要填写您的姓名作为负责人。
             </p>
           )}
         </CardContent>

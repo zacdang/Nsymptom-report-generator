@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { getEmployeeByUsername } from "./db";
+import { getEmployeeByName } from "./db";
 import type { Employee } from "../drizzle/schema";
 
 const SALT_ROUNDS = 10;
@@ -19,14 +19,14 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 }
 
 /**
- * Authenticate an employee with username and password
+ * Authenticate an employee with name and password
  * Returns the employee object if successful, null otherwise
  */
 export async function authenticateEmployee(
-  username: string,
+  name: string,
   password: string
 ): Promise<Employee | null> {
-  const employee = await getEmployeeByUsername(username);
+  const employee = await getEmployeeByName(name);
   
   if (!employee) {
     return null;

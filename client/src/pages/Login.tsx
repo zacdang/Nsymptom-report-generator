@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 export default function Login() {
   const [, setLocation] = useLocation();
-  const [username, setUsername] = useState("");
+  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -28,7 +28,7 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    loginMutation.mutate({ username, password });
+    loginMutation.mutate({ name, password });
   };
 
   return (
@@ -62,13 +62,13 @@ export default function Login() {
           </div>
           <form onSubmit={handleSubmit}>
             <div className="mb-2">
-              <label style={{ display: 'block', fontSize: '9px', fontWeight: 500, color: '#555', marginBottom: '2px' }}>用户名</label>
+              <label style={{ display: 'block', fontSize: '9px', fontWeight: 500, color: '#555', marginBottom: '2px' }}>姓名</label>
               <input
                 type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 required
-                autoComplete="username"
+                autoComplete="name"
                 className="w-full outline-none focus:border-green-500"
                 style={{ height: '26px', border: '1px solid #ddd', borderRadius: '4px', padding: '0 8px', fontSize: '11px' }}
               />

@@ -26,7 +26,7 @@ type Step = 0 | 1 | 2 | 3;
 type BodyPart = 'head' | 'body' | 'limbs' | 'mental' | null;
 
 interface FormData {
-  employeeUsername: string;
+  employeeName: string;
   name: string;
   gender: 'male' | 'female' | '';
   ageRange: string;
@@ -71,7 +71,7 @@ export default function Questionnaire() {
   const [currentStep, setCurrentStep] = useState<Step>(0);
   const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart>(null);
   const [formData, setFormData] = useState<FormData>({
-    employeeUsername: "",
+    employeeName: "",
     name: "",
     gender: "",
     ageRange: "",
@@ -135,7 +135,7 @@ export default function Questionnaire() {
   };
 
   const handleStartQuestionnaire = () => {
-    if (!formData.employeeUsername || !formData.name) {
+    if (!formData.employeeName || !formData.name) {
       toast.error("请填写姓名和负责人");
       return;
     }
@@ -168,7 +168,7 @@ export default function Questionnaire() {
       toast.success("问卷提交成功！感谢您的填写。");
       setTimeout(() => {
         setFormData({
-          employeeUsername: "",
+          employeeName: "",
           name: "",
           gender: "",
           ageRange: "",
@@ -215,7 +215,7 @@ export default function Questionnaire() {
   });
 
   const handleSubmit = async () => {
-    if (!formData.employeeUsername || !formData.name || !formData.gender || !formData.ageRange) {
+    if (!formData.employeeName || !formData.name || !formData.gender || !formData.ageRange) {
       toast.error("请填写必填项");
       return;
     }
@@ -297,12 +297,12 @@ export default function Questionnaire() {
               <div>
                 <Label className="text-sm font-medium text-slate-700">负责人 <span className="text-red-500">*</span></Label>
                 <Input
-                  value={formData.employeeUsername}
-                  onChange={(e) => setFormData({ ...formData, employeeUsername: e.target.value })}
-                  placeholder="请输入负责人用户名"
+                  value={formData.employeeName}
+                  onChange={(e) => setFormData({ ...formData, employeeName: e.target.value })}
+                  placeholder="请输入负责人姓名"
                   className="mt-1.5 h-12 text-base"
                 />
-                <p className="text-xs text-slate-400 mt-1">请填写推荐您填写此问卷的伙伴用户名</p>
+                <p className="text-xs text-slate-400 mt-1">请填写推荐您填写此问卷的伙伴姓名</p>
               </div>
             </div>
 
@@ -394,7 +394,7 @@ export default function Questionnaire() {
                 <div className="px-8 py-6 space-y-6">
                   {/* Display name (read-only, set from cover page) */}
                   <div className="bg-slate-50 rounded-lg px-4 py-3">
-                    <p className="text-sm text-slate-500">填写人：<span className="font-semibold text-slate-800">{formData.name}</span> · 负责人：<span className="font-semibold text-slate-800">{formData.employeeUsername}</span></p>
+                    <p className="text-sm text-slate-500">填写人：<span className="font-semibold text-slate-800">{formData.name}</span> · 负责人：<span className="font-semibold text-slate-800">{formData.employeeName}</span></p>
                   </div>
 
                   {/* Gender */}
