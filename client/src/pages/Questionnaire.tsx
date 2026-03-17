@@ -262,53 +262,59 @@ export default function Questionnaire() {
   // Cover page (step 0)
   if (currentStep === 0) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6"
-        style={{
-          backgroundImage: 'url(/questionnaire-cover.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
-        }}
-      >
+      <div className="min-h-screen bg-[#f0ede4]">
+        {/* Cover Image - full width */}
+        <div className="w-full">
+          <img
+            src="/questionnaire-cover.webp"
+            alt="美食美塑 体质重塑"
+            className="w-full h-auto"
+          />
+        </div>
+
+        {/* Form section below the image */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl p-8 max-w-md w-full space-y-6"
+          className="px-6 py-8 max-w-md mx-auto space-y-6"
         >
-          <div className="text-center space-y-2">
-            <h1 className="text-2xl font-bold text-slate-800">健康评估问卷</h1>
-            <p className="text-sm text-slate-500">请填写以下信息开始问卷</p>
+          <div className="bg-white rounded-2xl shadow-lg p-6 space-y-5">
+            <div className="text-center space-y-1">
+              <h2 className="text-lg font-bold text-slate-800">请填写以下信息开始问卷</h2>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium text-slate-700">姓名 <span className="text-red-500">*</span></Label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="请输入您的姓名"
+                  className="mt-1.5 h-12 text-base"
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-slate-700">负责人 <span className="text-red-500">*</span></Label>
+                <Input
+                  value={formData.employeeUsername}
+                  onChange={(e) => setFormData({ ...formData, employeeUsername: e.target.value })}
+                  placeholder="请输入负责人用户名"
+                  className="mt-1.5 h-12 text-base"
+                />
+                <p className="text-xs text-slate-400 mt-1">请填写推荐您填写此问卷的伙伴用户名</p>
+              </div>
+            </div>
+
+            <Button
+              onClick={handleStartQuestionnaire}
+              className="w-full py-3 h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-base"
+            >
+              开始填写问卷
+            </Button>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <Label className="text-sm font-medium text-slate-700">姓名 <span className="text-red-500">*</span></Label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="请输入您的姓名"
-                className="mt-1.5"
-              />
-            </div>
-            <div>
-              <Label className="text-sm font-medium text-slate-700">负责人 <span className="text-red-500">*</span></Label>
-              <Input
-                value={formData.employeeUsername}
-                onChange={(e) => setFormData({ ...formData, employeeUsername: e.target.value })}
-                placeholder="请输入负责人用户名"
-                className="mt-1.5"
-              />
-              <p className="text-xs text-slate-400 mt-1">请填写推荐您填写此问卷的伙伴用户名</p>
-            </div>
-          </div>
-
-          <Button
-            onClick={handleStartQuestionnaire}
-            className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base"
-          >
-            开始问卷
-          </Button>
+          <div className="pb-8" />
         </motion.div>
       </div>
     );
