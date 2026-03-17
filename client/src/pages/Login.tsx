@@ -16,7 +16,6 @@ export default function Login() {
   const loginMutation = trpc.employee.login.useMutation({
     onSuccess: (data) => {
       toast.success("登录成功！");
-      // Redirect based on role
       if (data.employee.role === "admin") {
         setLocation("/admin");
       } else {
@@ -37,7 +36,7 @@ export default function Login() {
 
   return (
     <div 
-      className="min-h-screen flex flex-col items-center justify-between py-8"
+      className="min-h-screen flex flex-col"
       style={{
         backgroundImage: 'url(/login-bg.webp)',
         backgroundSize: 'cover',
@@ -45,58 +44,56 @@ export default function Login() {
         backgroundRepeat: 'no-repeat'
       }}
     >
-      {/* Spacer to push card to center area */}
-      <div className="flex-1" />
-      
-      {/* Login card */}
-      <Card className="w-full max-w-sm bg-white/95 backdrop-blur-sm shadow-2xl">
-        <CardHeader className="text-center pb-2">
-          <img src="/logo.jpg" alt="Logo" className="h-14 w-auto mx-auto mb-2" />
-          <CardTitle className="text-base">症状报告生成系统</CardTitle>
-          <CardDescription className="text-xs">登录您的账户</CardDescription>
-        </CardHeader>
-        <CardContent className="pb-4">
-          <form id="loginForm" onSubmit={handleSubmit} className="space-y-3">
-            <div className="space-y-1">
-              <Label htmlFor="username" className="text-xs">用户名</Label>
-              <Input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                autoComplete="username"
-                className="h-8 text-sm"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="password" className="text-xs">密码</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-                className="h-8 text-sm"
-              />
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Spacer to push button to bottom */}
+      {/* Top area - shows background image */}
       <div className="flex-1" />
 
-      {/* Small button at the bottom of the page */}
-      <button
-        type="submit"
-        form="loginForm"
-        disabled={isLoading}
-        className="px-6 py-1.5 text-xs font-medium text-white bg-primary hover:bg-primary/90 rounded-md shadow-lg disabled:opacity-50 transition-colors mb-4"
-      >
-        {isLoading ? "登录中..." : "登录"}
-      </button>
+      {/* Login card pinned to bottom */}
+      <div className="w-full flex justify-center pb-6 px-4">
+        <Card className="w-full max-w-sm bg-white/95 backdrop-blur-sm shadow-2xl">
+          <CardHeader className="text-center pb-2 pt-4">
+            <img src="/logo.jpg" alt="Logo" className="h-12 w-auto mx-auto mb-1" />
+            <CardTitle className="text-sm">症状报告生成系统</CardTitle>
+            <CardDescription className="text-xs">登录您的账户</CardDescription>
+          </CardHeader>
+          <CardContent className="pb-4 pt-0">
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="space-y-1">
+                <Label htmlFor="username" className="text-xs">用户名</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  autoComplete="username"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="password" className="text-xs">密码</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="pt-2 flex justify-center">
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="px-6 py-1.5 text-xs font-medium text-white bg-primary hover:bg-primary/90 rounded-md shadow disabled:opacity-50 transition-colors"
+                >
+                  {isLoading ? "登录中..." : "登录"}
+                </button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
