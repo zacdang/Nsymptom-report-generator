@@ -478,6 +478,13 @@ export const appRouter = router({
         return await db.getQuestionnairesByEmployeeId(ctx.employee.id);
       }),
 
+    // Admin: get questionnaires by specific employee ID
+    byEmployeeId: adminProcedure
+      .input(z.object({ employeeId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getQuestionnairesByEmployeeId(input.employeeId);
+      }),
+
     search: employeeProcedure
       .input(z.object({ name: z.string().min(1, "Name is required") }))
       .query(async ({ input, ctx }) => {
