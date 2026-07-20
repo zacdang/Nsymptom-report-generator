@@ -5,8 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { ArrowLeft, Download, FileText, Users, Loader2 } from "lucide-react";
-import { generateReportPDF } from "@/lib/pdfGenerator";
+import { ArrowLeft, FileText, Users } from "lucide-react";
 
 interface CreateReportProps {
   employeeId: number;
@@ -16,7 +15,6 @@ interface CreateReportProps {
 export default function CreateReport({ employeeId, onBack }: CreateReportProps) {
   const [generatedMarkdown, setGeneratedMarkdown] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
   const [selectedCustomerName, setSelectedCustomerName] = useState("");
 
   const utils = trpc.useUtils();
@@ -38,7 +36,7 @@ export default function CreateReport({ employeeId, onBack }: CreateReportProps) 
 
   const createReportMutation = trpc.reports.create.useMutation({
     onSuccess: () => {
-      toast.success("报告创建成功");
+      toast.success("报告保存成功，可在「我的报告」中下载 PDF");
       utils.reports.list.invalidate();
       onBack();
     },
@@ -64,23 +62,6 @@ export default function CreateReport({ employeeId, onBack }: CreateReportProps) 
       symptoms: `[问卷生成] ${selectedCustomerName}`,
       generatedText: generatedMarkdown,
     });
-  };
-
-  const handleDownloadPDF = async () => {
-    if (!generatedMarkdown) {
-      toast.error("请先生成报告");
-      return;
-    }
-    setIsDownloading(true);
-    try {
-      await generateReportPDF(generatedMarkdown, selectedCustomerName || "客户");
-      toast.success('PDF 下载成功');
-    } catch (error) {
-      console.error('PDF generation error:', error);
-      toast.error('生成 PDF 失败，请重试');
-    } finally {
-      setIsDownloading(false);
-    }
   };
 
   return (
@@ -138,7 +119,8 @@ export default function CreateReport({ employeeId, onBack }: CreateReportProps) 
       {generatedMarkdown && (
         <Card>
           <CardHeader>
-            <CardTitle>查看和编辑报告</CardTitle>
+            <CardTitle>编辑报告内容</CardTitle>
+            <p className="text-sm text-gray-500">请在下方编辑报告，加入您的总结后点击「保存报告」。保存后可在「我的报告」中下载 PDF。</p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -152,18 +134,6 @@ export default function CreateReport({ employeeId, onBack }: CreateReportProps) 
             </div>
             <div className="flex gap-2">
               <Button onClick={handleSave}>保存报告</Button>
-              <Button 
-                variant="outline" 
-                onClick={handleDownloadPDF}
-                disabled={isDownloading}
-              >
-                {isDownloading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4 mr-2" />
-                )}
-                {isDownloading ? "生成中..." : "下载 PDF"}
-              </Button>
               <Button variant="ghost" onClick={() => setGeneratedMarkdown("")}>
                 清空
               </Button>
