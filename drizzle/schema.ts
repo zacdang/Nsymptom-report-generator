@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, longtext, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -66,7 +66,7 @@ export const reports = mysqlTable("reports", {
   id: int("id").autoincrement().primaryKey(),
   employeeId: int("employee_id").notNull(),
   symptoms: text("symptoms").notNull(),
-  generatedText: text("generated_text"),
+  generatedText: longtext("generated_text"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
 });
