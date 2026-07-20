@@ -160,9 +160,6 @@ importers:
       framer-motion:
         specifier: ^12.23.22
         version: 12.23.22(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
-      html2canvas:
-        specifier: ^1.4.1
-        version: 1.4.1
       input-otp:
         specifier: ^1.4.2
         version: 1.4.2(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
@@ -7024,7 +7021,8 @@ snapshots:
 
   bail@2.0.2: {}
 
-  base64-arraybuffer@1.0.2: {}
+  base64-arraybuffer@1.0.2:
+    optional: true
 
   base64-js@0.0.8: {}
 
@@ -7199,6 +7197,7 @@ snapshots:
   css-line-break@2.1.0:
     dependencies:
       utrie: 1.0.2
+    optional: true
 
   cssesc@3.0.0: {}
 
@@ -7917,6 +7916,7 @@ snapshots:
     dependencies:
       css-line-break: 2.1.0
       text-segmentation: 1.0.3
+    optional: true
 
   http-errors@2.0.0:
     dependencies:
@@ -9149,6 +9149,7 @@ snapshots:
   text-segmentation@1.0.3:
     dependencies:
       utrie: 1.0.2
+    optional: true
 
   tiny-inflate@1.0.3: {}
 
@@ -9290,6 +9291,7 @@ snapshots:
   utrie@1.0.2:
     dependencies:
       base64-arraybuffer: 1.0.2
+    optional: true
 
   uuid@11.1.0: {}
 
