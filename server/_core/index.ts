@@ -239,6 +239,27 @@ async function startServer() {
     }
   );
 
+  // Debug endpoint to check/create employees
+  app.get('/api/debug/employees', async (req, res) => {
+    try {
+      const { getDb, getAllEmployees, createEmployee } = await import("../db");
+      const { hashPassword } = await import("../auth");
+      const db = await getDb();
+      if (!db) return res.json({ error: 'No database connection' });
+      const emps = await getAllEmployees();
+      if (emps.length === 0) {
+        // Create default admin
+        const hash = await hashPassword('yl2025');
+        await createEmployee({ username: '杨柳', passwordHash: hash, name: '杨柳', role: 'admin' });
+        const emps2 = await getAllEmployees();
+        return res.json({ message: 'Created default admin', employees: emps2.map((e: any) => ({ id: e.id, name: e.name, role: e.role })) });
+      }
+      return res.json({ employees: emps.map((e: any) => ({ id: e.id, name: e.name, role: e.role })) });
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
   // Diagnostic endpoint to check tables and run seed
   app.get('/api/debug/tables', async (req, res) => {
     try {
