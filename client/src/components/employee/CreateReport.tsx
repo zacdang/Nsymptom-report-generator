@@ -5,7 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { ArrowLeft, Download, FileText, Users } from "lucide-react";
+import { ArrowLeft, Download, FileText, Users, Loader2 } from "lucide-react";
+import { generateReportPDF } from "@/lib/pdfGenerator";
 
 interface CreateReportProps {
   employeeId: number;
@@ -15,6 +16,7 @@ interface CreateReportProps {
 export default function CreateReport({ employeeId, onBack }: CreateReportProps) {
   const [generatedMarkdown, setGeneratedMarkdown] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [selectedCustomerName, setSelectedCustomerName] = useState("");
 
   const utils = trpc.useUtils();
@@ -62,6 +64,23 @@ export default function CreateReport({ employeeId, onBack }: CreateReportProps) 
       symptoms: `[问卷生成] ${selectedCustomerName}`,
       generatedText: generatedMarkdown,
     });
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!generatedMarkdown) {
+      toast.error("请先生成报告");
+      return;
+    }
+    setIsDownloading(true);
+    try {
+      await generateReportPDF(generatedMarkdown, selectedCustomerName || "客户");
+      toast.success('PDF 下载成功');
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error('生成 PDF 失败，请重试');
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -135,33 +154,15 @@ export default function CreateReport({ employeeId, onBack }: CreateReportProps) 
               <Button onClick={handleSave}>保存报告</Button>
               <Button 
                 variant="outline" 
-                onClick={async () => {
-                  try {
-                    const response = await fetch('/api/generate-pdf', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ markdownContent: generatedMarkdown }),
-                    });
-                    
-                    if (!response.ok) throw new Error('PDF generation failed');
-                    
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `report-${selectedCustomerName}-${Date.now()}.pdf`;
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-                    toast.success('PDF 下载成功');
-                  } catch (error) {
-                    toast.error('生成 PDF 失败');
-                  }
-                }}
+                onClick={handleDownloadPDF}
+                disabled={isDownloading}
               >
-                <Download className="w-4 h-4 mr-2" />
-                下载 PDF
+                {isDownloading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4 mr-2" />
+                )}
+                {isDownloading ? "生成中..." : "下载 PDF"}
               </Button>
               <Button variant="ghost" onClick={() => setGeneratedMarkdown("")}>
                 清空
