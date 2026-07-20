@@ -1,7 +1,7 @@
 /**
  * PDF Report Generator
  * Uses a print-friendly popup window approach for reliable Chinese text rendering.
- * Template pages are rendered as full-page images, followed by formatted report content.
+ * Cover page uses dynamic customer name. Theory pages merged into one page.
  */
 
 // Convert markdown to simple HTML
@@ -67,19 +67,81 @@ export async function generateReportPDF(
       print-color-adjust: exact;
     }
     
-    /* Template pages - each image fills one full A4 page */
-    .template-page {
+    /* Cover page */
+    .cover-page {
       width: 210mm;
       height: 297mm;
       page-break-after: always;
-      overflow: hidden;
       position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #fff;
     }
-    .template-page img {
+    .cover-top-bar {
       width: 100%;
-      height: 100%;
+      height: 12mm;
+      background: #2c3e50;
+    }
+    .cover-title-area {
+      margin-top: 15mm;
+      width: 80%;
+      background: #f5f6fa;
+      padding: 12mm 15mm;
+      text-align: center;
+    }
+    .cover-title {
+      font-size: 42px;
+      font-weight: bold;
+      color: #2c3e50;
+      letter-spacing: 2px;
+    }
+    .cover-subtitle {
+      margin-top: 12mm;
+      font-size: 16px;
+      color: #666;
+      letter-spacing: 1px;
+    }
+    .cover-logo {
+      margin-top: 8mm;
+      width: 120px;
+      height: auto;
+    }
+    .cover-illustration {
+      margin-top: 10mm;
+      width: 70%;
+      max-height: 140mm;
       object-fit: contain;
-      display: block;
+    }
+
+    /* Theory page - merged content */
+    .theory-page {
+      width: 210mm;
+      height: 297mm;
+      page-break-after: always;
+      padding: 18mm 22mm;
+      position: relative;
+      background: #fff;
+    }
+    .theory-page .section-title {
+      font-size: 26px;
+      font-weight: bold;
+      color: #2c3e50;
+      margin-bottom: 8mm;
+      padding-bottom: 3mm;
+      border-bottom: 2px solid #e0e0e0;
+    }
+    .theory-page .section-content {
+      font-size: 14px;
+      line-height: 2;
+      color: #444;
+      margin-bottom: 12mm;
+      padding-left: 12px;
+      border-left: 4px solid #4CAF50;
+    }
+    .theory-page .section-content p {
+      margin-bottom: 6mm;
+      text-align: justify;
     }
     
     /* Report content pages */
@@ -165,24 +227,29 @@ export async function generateReportPDF(
     <button class="btn-close" onclick="window.close()">关闭</button>
   </div>
 
-  <!-- Template Page 1: Cover -->
-  <div class="template-page">
-    <img src="/pdf-cover-01.png" alt="封面" />
+  <!-- Page 1: Dynamic Cover -->
+  <div class="cover-page">
+    <div class="cover-top-bar"></div>
+    <div class="cover-title-area">
+      <div class="cover-title">${customerName}体质管理方案</div>
+    </div>
+    <p class="cover-subtitle">专业体质分析与调理指南</p>
+    <img class="cover-logo" src="/logo.jpg" alt="美食美塑" />
+    <img class="cover-illustration" src="/pdf-cover-01.png" alt="Pro-Health" style="margin-top:5mm; width:65%; object-fit:contain; object-position: bottom; clip-path: inset(45% 0 0 0);" />
   </div>
 
-  <!-- Template Page 2 -->
-  <div class="template-page">
-    <img src="/pdf-template-02.png" alt="体质管理范畴" />
-  </div>
-
-  <!-- Template Page 3 -->
-  <div class="template-page">
-    <img src="/pdf-template-03.png" alt="新陈代谢理论基础1" />
-  </div>
-
-  <!-- Template Page 4 -->
-  <div class="template-page">
-    <img src="/pdf-template-04.png" alt="新陈代谢理论基础2" />
+  <!-- Page 2: Theory (merged) -->
+  <div class="theory-page">
+    <div class="section-title">一、美食美塑体质管理的范畴</div>
+    <div class="section-content">
+      <p>美食美塑体质管理帮助会员管理症状形成的原因，从餐桌饮食管理和生活方式按下体质继续发展的暂停键，同时把这些年已经形成的功能伤害，比如肠道菌群、过敏反应、酸性疲劳体质，皮肤问题、眼部问题等透过营养素治疗重塑体质。一周会有明显感受，一个月建立起新的代谢平衡，3个月趋于正向循环。</p>
+    </div>
+    <div class="section-title" style="margin-top: 6mm;">二、新陈代谢与细胞再生理论基础</div>
+    <div class="section-content">
+      <p>人体由最小的构成单位细胞构成，所有人身上的细胞在经过六个月左右的时间，大部分细胞组织都会被更新90%，产生新的组织。头发指甲的生长，伤口愈合都展示了人体神奇的再生和自我修复能力。胃细胞七天便更新一次；皮肤细胞28天左右更新一次；肝脏细胞在180天更换一次；红血球细胞120天更新一次。在一年左右的时间，身体98%的细胞都会被重新更新一遍。而最结实的骨细胞也会更新，需要七年。</p>
+      <p>每个人都有机会从今天开始利用细胞再生的机会学会采购身体构成的原料来重新建设自己，焕然一新，甚至逆龄。只要营养充足，受损的器官通过细胞的不断"新陈代谢"和"自我修复"，经过一段时间，受损的组织和器官就会被"软性置换"，产生出"新"的组织与器官。很多疾病都有机会彻底康复。</p>
+      <p>真正能让我们恢复健康的绝对不是药物，因为药物的成分不是细胞修复所需要的成分。而一旦给足时间，给足生命构成所需要营养物质，如蛋白质、维生素、矿物质、脂类等这些人体构成所需要的材料，人体就会启动自我修复的过程。国家大力推动2030健康中国计划，重预防疾病康复轻医疗就是这个原因。</p>
+    </div>
   </div>
 
   <!-- Dynamic Report Content -->
