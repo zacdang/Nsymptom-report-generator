@@ -242,18 +242,24 @@ async function startServer() {
   // Debug endpoint to check/create employees
   app.get('/api/debug/employees', async (req, res) => {
     try {
-      const { getDb, getAllEmployees, createEmployee } = await import("../db");
+      const { getDb, getAllEmployees, createEmployee, getEmployeeByName, updateEmployee } = await import("../db");
       const { hashPassword } = await import("../auth");
       const db = await getDb();
       if (!db) return res.json({ error: 'No database connection' });
-      const emps = await getAllEmployees();
-      if (emps.length === 0) {
-        // Create default admin
-        const hash = await hashPassword('yl2025');
-        await createEmployee({ username: '杨柳', passwordHash: hash, name: '杨柳', role: 'admin' });
-        const emps2 = await getAllEmployees();
-        return res.json({ message: 'Created default admin', employees: emps2.map((e: any) => ({ id: e.id, name: e.name, role: e.role })) });
+      
+      // Reset password for 杨柳 if requested
+      const resetName = req.query.reset as string;
+      if (resetName) {
+        const emp = await getEmployeeByName(resetName);
+        if (emp) {
+          const hash = await hashPassword('yl2025');
+          await updateEmployee(emp.id, { passwordHash: hash });
+          return res.json({ message: `Password reset for ${resetName}`, id: emp.id });
+        }
+        return res.json({ error: `Employee ${resetName} not found` });
       }
+      
+      const emps = await getAllEmployees();
       return res.json({ employees: emps.map((e: any) => ({ id: e.id, name: e.name, role: e.role })) });
     } catch (e: any) {
       return res.status(500).json({ error: e.message });
