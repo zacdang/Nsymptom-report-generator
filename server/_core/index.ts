@@ -374,6 +374,41 @@ async function startServer() {
     }
   });
 
+  // Migration endpoint to fix reports table
+  app.get('/api/debug/fix-reports', async (req, res) => {
+    try {
+      const { getDb } = await import("../db");
+      const db = await getDb();
+      if (!db) return res.json({ error: 'No database connection' });
+      const { sql } = await import("drizzle-orm");
+      
+      const results: string[] = [];
+      
+      // Change symptoms from json to text
+      try {
+        await db.execute(sql`ALTER TABLE reports MODIFY COLUMN symptoms text NOT NULL`);
+        results.push('symptoms: changed to text');
+      } catch (e: any) {
+        results.push(`symptoms: ${e.message}`);
+      }
+      
+      // Change generated_text from text to longtext
+      try {
+        await db.execute(sql`ALTER TABLE reports MODIFY COLUMN generated_text longtext`);
+        results.push('generated_text: changed to longtext');
+      } catch (e: any) {
+        results.push(`generated_text: ${e.message}`);
+      }
+      
+      // Verify
+      const desc = await db.execute(sql`DESCRIBE reports`);
+      
+      res.json({ results, describe: desc[0] });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // Health check endpoint
   app.get('/health', async (req, res) => {
     try {
