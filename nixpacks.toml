@@ -19,4 +19,4 @@ cmds = ["pnpm install --frozen-lockfile"]
 cmds = ["pnpm build"]
 
 [start]
-cmd = "PUPPETEER_EXECUTABLE_PATH=/nix/store/*-chromium-*/bin/chromium NODE_ENV=production pnpm start"
+cmd = "PUPPETEER_EXECUTABLE_PATH=$(which chromium) NODE_ENV=production pnpm start"
