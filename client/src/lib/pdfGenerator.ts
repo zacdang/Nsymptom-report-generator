@@ -235,7 +235,7 @@ export async function generateReportPDF(
     </div>
     <p class="cover-subtitle">专业体质分析与调理指南</p>
     <img class="cover-logo" src="/logo.jpg" alt="美食美塑" />
-    <img class="cover-illustration" src="/pdf-cover-01.png" alt="Pro-Health" />
+    <img class="cover-illustration" src="/pdf-cover-illustration.png" alt="Pro-Health" />
   </div>
 
   <!-- Page 2: Theory (merged) -->
