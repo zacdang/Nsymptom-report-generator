@@ -108,9 +108,9 @@ export async function generateReportPDF(
       height: auto;
     }
     .cover-illustration {
-      margin-top: 10mm;
-      width: 70%;
-      max-height: 140mm;
+      margin-top: auto;
+      margin-bottom: 15mm;
+      width: 75%;
       object-fit: contain;
     }
 
@@ -235,7 +235,7 @@ export async function generateReportPDF(
     </div>
     <p class="cover-subtitle">专业体质分析与调理指南</p>
     <img class="cover-logo" src="/logo.jpg" alt="美食美塑" />
-    <img class="cover-illustration" src="/pdf-cover-01.png" alt="Pro-Health" style="margin-top:5mm; width:65%; object-fit:contain; object-position: bottom; clip-path: inset(45% 0 0 0);" />
+    <img class="cover-illustration" src="/pdf-cover-01.png" alt="Pro-Health" />
   </div>
 
   <!-- Page 2: Theory (merged) -->
