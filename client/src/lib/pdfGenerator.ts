@@ -4,30 +4,135 @@
  * Cover page uses dynamic customer name. Theory pages merged into one page.
  */
 
-// Convert markdown to simple HTML
-function markdownToHtml(markdown: string): string {
-  let html = markdown;
-  // Headers
-  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-  // Bold
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  // Italic
-  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-  // List items
-  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
-  // Group consecutive list items
-  html = html.replace(/(<li>.*?<\/li>\s*)+/gs, '<ul>$&</ul>');
-  // Paragraphs (double newline)
-  html = html.replace(/\n\n/g, '</p><p>');
-  // Single newline to <br>
-  html = html.replace(/\n/g, '<br>');
-  // Wrap in paragraph if not starting with tag
-  if (!html.startsWith('<')) {
-    html = '<p>' + html + '</p>';
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderInlineMarkdown(text: string): string {
+  return escapeHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>");
+}
+
+function renderMarkdownFragment(markdown: string): string {
+  const lines = markdown.split(/\r?\n/);
+  const html: string[] = [];
+  let paragraphLines: string[] = [];
+  let listItems: string[] = [];
+
+  const flushParagraph = () => {
+    if (paragraphLines.length === 0) return;
+    html.push(`<p>${paragraphLines.map(renderInlineMarkdown).join("<br>")}</p>`);
+    paragraphLines = [];
+  };
+
+  const flushList = () => {
+    if (listItems.length === 0) return;
+    html.push(`<ul>${listItems.map(item => `<li>${renderInlineMarkdown(item)}</li>`).join("")}</ul>`);
+    listItems = [];
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+
+    if (trimmed.startsWith("### ")) {
+      flushParagraph();
+      flushList();
+      html.push(`<h3>${renderInlineMarkdown(trimmed.slice(4))}</h3>`);
+      continue;
+    }
+
+    if (trimmed.startsWith("## ")) {
+      flushParagraph();
+      flushList();
+      html.push(`<h2>${renderInlineMarkdown(trimmed.slice(3))}</h2>`);
+      continue;
+    }
+
+    if (trimmed.startsWith("# ")) {
+      flushParagraph();
+      flushList();
+      html.push(`<h1>${renderInlineMarkdown(trimmed.slice(2))}</h1>`);
+      continue;
+    }
+
+    if (trimmed.startsWith("- ")) {
+      flushParagraph();
+      listItems.push(trimmed.slice(2));
+      continue;
+    }
+
+    flushList();
+    paragraphLines.push(trimmed);
   }
-  return html;
+
+  flushParagraph();
+  flushList();
+
+  return html.join("\n");
+}
+
+function splitMarkdownIntoPages(markdown: string): string[] {
+  const pages: string[][] = [];
+  let currentPage: string[] = [];
+  let currentH2 = "";
+
+  const hasBodyContent = (lines: string[]) =>
+    lines.some(line => {
+      const trimmed = line.trim();
+      return trimmed && !trimmed.startsWith("#");
+    });
+
+  const flushPage = () => {
+    if (currentPage.some(line => line.trim())) {
+      pages.push(currentPage);
+    }
+    currentPage = [];
+  };
+
+  for (const line of markdown.split(/\r?\n/)) {
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith("## ")) {
+      flushPage();
+      currentH2 = line;
+      currentPage = [line];
+      continue;
+    }
+
+    if (trimmed.startsWith("### ")) {
+      if (hasBodyContent(currentPage)) {
+        flushPage();
+        currentPage = currentH2 ? [currentH2, "", line] : [line];
+      } else {
+        currentPage = currentH2 ? [currentH2, "", line] : [line];
+      }
+      continue;
+    }
+
+    currentPage.push(line);
+  }
+
+  flushPage();
+
+  return pages.map(page => page.join("\n"));
+}
+
+function markdownToPagedHtml(markdown: string): string {
+  return splitMarkdownIntoPages(markdown)
+    .map(page => `<section class="report-page">${renderMarkdownFragment(page)}</section>`)
+    .join("\n");
 }
 
 export async function generateReportPDF(
@@ -41,7 +146,7 @@ export async function generateReportPDF(
     return;
   }
 
-  const htmlContent = markdownToHtml(markdownContent);
+  const htmlContent = markdownToPagedHtml(markdownContent);
 
   // Build the full HTML document for printing
   const fullHtml = `<!DOCTYPE html>
@@ -145,44 +250,63 @@ export async function generateReportPDF(
     }
     
     /* Report content pages */
-    .report-content {
-      padding: 20mm 25mm;
-      font-size: 14px;
+    .report-pages {
+      background: #fff;
     }
-    .report-content h1 {
-      font-size: 24px;
+    .report-page {
+      width: 210mm;
+      min-height: 297mm;
+      page-break-after: always;
+      break-after: page;
+      padding: 24mm 30mm 28mm;
+      font-size: 14.5px;
+      line-height: 2;
+      background: #fff;
+      -webkit-box-decoration-break: clone;
+      box-decoration-break: clone;
+    }
+    .report-page:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+    .report-page h1 {
+      font-size: 26px;
       color: #2c3e50;
-      margin: 30px 0 15px 0;
+      margin: 0 0 14mm 0;
       font-weight: bold;
       page-break-after: avoid;
+      line-height: 1.5;
     }
-    .report-content h2 {
-      font-size: 20px;
+    .report-page h2 {
+      font-size: 24px;
       color: #2c5282;
-      margin: 25px 0 12px 0;
-      border-left: 4px solid #3182ce;
-      padding-left: 12px;
+      margin: 0 0 12mm 0;
+      padding: 0 0 4mm 0;
+      border-bottom: 2px solid #d7e3f5;
       page-break-after: avoid;
+      line-height: 1.45;
     }
-    .report-content h3 {
-      font-size: 16px;
+    .report-page h3 {
+      font-size: 19px;
       color: #2e7d32;
-      margin: 20px 0 10px 0;
+      margin: 0 0 9mm 0;
       font-weight: bold;
       page-break-after: avoid;
+      line-height: 1.5;
     }
-    .report-content p {
-      margin-bottom: 12px;
+    .report-page p {
+      margin-bottom: 7mm;
       text-align: justify;
+      color: #3f4652;
     }
-    .report-content ul {
-      padding-left: 24px;
-      margin-bottom: 15px;
+    .report-page ul {
+      padding-left: 8mm;
+      margin-bottom: 8mm;
     }
-    .report-content li {
-      margin-bottom: 8px;
+    .report-page li {
+      margin-bottom: 4mm;
     }
-    .report-content strong {
+    .report-page strong {
       color: #2d3748;
     }
     
@@ -253,7 +377,7 @@ export async function generateReportPDF(
   </div>
 
   <!-- Dynamic Report Content -->
-  <div class="report-content">
+  <div class="report-pages">
     ${htmlContent}
   </div>
 </body>
