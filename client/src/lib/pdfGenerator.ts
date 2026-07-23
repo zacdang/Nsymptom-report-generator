@@ -87,6 +87,7 @@ function splitMarkdownIntoPages(markdown: string): string[] {
   const pages: string[][] = [];
   let currentPage: string[] = [];
   let currentH2 = "";
+  let isIntroPage = true;
 
   const hasBodyContent = (lines: string[]) =>
     lines.some(line => {
@@ -105,7 +106,20 @@ function splitMarkdownIntoPages(markdown: string): string[] {
     const trimmed = line.trim();
 
     if (trimmed.startsWith("## ")) {
+      const h2Title = trimmed.slice(3).trim();
+      const staysOnIntroPage = isIntroPage && ["基本信息", "选择的症状"].includes(h2Title);
+
+      if (staysOnIntroPage) {
+        currentH2 = line;
+        if (currentPage.length > 0 && currentPage[currentPage.length - 1].trim()) {
+          currentPage.push("");
+        }
+        currentPage.push(line);
+        continue;
+      }
+
       flushPage();
+      isIntroPage = false;
       currentH2 = line;
       currentPage = [line];
       continue;
