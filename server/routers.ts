@@ -10,6 +10,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { employeeProcedure, adminProcedure } from "./_core/authProcedures";
 import { EMPLOYEE_COOKIE_NAME } from "../shared/employeeConst";
+import { ensureSummaryAdjustmentPlan } from "../shared/reportPlan";
 // @ts-ignore - cookie package has type issues
 import cookie from "cookie";
 
@@ -564,8 +565,8 @@ export const appRouter = router({
         // Build markdown report
         let markdown = `# ${response.name} \u2014 \u4f53\u8d28\u89e3\u6790\u62a5\u544a\n\n`;
 
-if (template?.templateText) {
-           markdown += `${template.templateText}\n\n`;
+        if (template?.templateText) {
+          markdown += `${template.templateText}\n\n`;
         }
 
         markdown += `## \u57fa\u672c\u4fe1\u606f\n\n`;
@@ -616,6 +617,8 @@ if (template?.templateText) {
           markdown += `## \u8865\u5145\u8bf4\u660e\n\n`;
           markdown += `${response.additionalNotes}\n\n`;
         }
+
+        markdown = ensureSummaryAdjustmentPlan(markdown);
 
         return { success: true, markdown, matchedCount: matchedAnalysis.length };
       }),

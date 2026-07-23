@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { ArrowLeft, FileText, Users } from "lucide-react";
+import { ensureSummaryAdjustmentPlan } from "@shared/reportPlan";
 
 interface CreateReportProps {
   employeeId: number;
@@ -24,7 +25,7 @@ export default function CreateReport({ employeeId, onBack }: CreateReportProps) 
 
   const generateReportMutation = trpc.questionnaire.generateReport.useMutation({
     onSuccess: (data) => {
-      setGeneratedMarkdown(data.markdown);
+      setGeneratedMarkdown(ensureSummaryAdjustmentPlan(data.markdown));
       toast.success(`报告生成成功，匹配到 ${data.matchedCount} 条解析`);
       setIsGenerating(false);
     },

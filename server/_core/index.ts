@@ -11,6 +11,7 @@ import { serveStatic, setupVite } from "./vite";
 import { generatePDF } from "../pdfGenerator";
 import { requireEmployeeAuth } from "./authMiddleware";
 import { seedSymptomAnalysis } from "../seed-analysis";
+import { ensureSummaryAdjustmentPlan } from "../../shared/reportPlan";
 import cookie from "cookie";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -229,6 +230,8 @@ async function startServer() {
           markdown += `## 补充说明\n\n`;
           markdown += `${response.additionalNotes}\n\n`;
         }
+
+        markdown = ensureSummaryAdjustmentPlan(markdown);
 
         res.json({ success: true, markdown, matchedCount: matchedAnalysis.length });
       } catch (error) {

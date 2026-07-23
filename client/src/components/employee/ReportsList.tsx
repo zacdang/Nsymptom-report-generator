@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { Download, Edit, Save, X, Loader2, FileText } from "lucide-react";
 import { generateReportPDF } from "@/lib/pdfGenerator";
+import { ensureSummaryAdjustmentPlan } from "@shared/reportPlan";
 
 interface ReportsListProps {
   employeeId: number;
@@ -34,7 +35,7 @@ export default function ReportsList({ employeeId }: ReportsListProps) {
 
   const handleEdit = (reportId: number, content: string) => {
     setEditingId(reportId);
-    setEditContent(content || "");
+    setEditContent(ensureSummaryAdjustmentPlan(content || ""));
   };
 
   const handleSaveEdit = (reportId: number) => {
@@ -61,7 +62,7 @@ export default function ReportsList({ employeeId }: ReportsListProps) {
           customerName = report.symptoms;
         }
       }
-      await generateReportPDF(report.generatedText, customerName);
+      await generateReportPDF(ensureSummaryAdjustmentPlan(report.generatedText), customerName);
       toast.success("PDF 下载成功");
     } catch (error) {
       console.error("PDF generation error:", error);
