@@ -89,12 +89,6 @@ function splitMarkdownIntoPages(markdown: string): string[] {
   let currentH2 = "";
   let isIntroPage = true;
 
-  const hasBodyContent = (lines: string[]) =>
-    lines.some(line => {
-      const trimmed = line.trim();
-      return trimmed && !trimmed.startsWith("#");
-    });
-
   const flushPage = () => {
     if (currentPage.some(line => line.trim())) {
       pages.push(currentPage);
@@ -122,16 +116,6 @@ function splitMarkdownIntoPages(markdown: string): string[] {
       isIntroPage = false;
       currentH2 = line;
       currentPage = [line];
-      continue;
-    }
-
-    if (trimmed.startsWith("### ")) {
-      if (hasBodyContent(currentPage)) {
-        flushPage();
-        currentPage = currentH2 ? [currentH2, "", line] : [line];
-      } else {
-        currentPage = currentH2 ? [currentH2, "", line] : [line];
-      }
       continue;
     }
 
