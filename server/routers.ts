@@ -56,7 +56,7 @@ export const appRouter = router({
         }
         
         const token = await createEmployeeToken(employee.id);
-        setEmployeeSessionCookie(ctx.res, token);
+        setEmployeeSessionCookie(ctx.req, ctx.res, token);
         
         return {
           success: true,
@@ -69,14 +69,14 @@ export const appRouter = router({
       }),
     
     logout: publicProcedure.mutation(({ ctx }) => {
-      clearEmployeeSessionCookie(ctx.res);
+      clearEmployeeSessionCookie(ctx.req, ctx.res);
       return { success: true };
     }),
     
     me: publicProcedure.query(async ({ ctx }) => {
       // Get employee from cookie
       const cookies = cookie.parse(ctx.req.headers.cookie || "");
-      const token = cookies["employee_session"];
+      const token = cookies[EMPLOYEE_COOKIE_NAME];
       
       if (!token) {
         return null;

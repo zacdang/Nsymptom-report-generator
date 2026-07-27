@@ -5,6 +5,7 @@ import cookie from "cookie";
 import { getEmployeeById } from "./db";
 import type { Employee } from "../drizzle/schema";
 import { EMPLOYEE_COOKIE_NAME, EMPLOYEE_SESSION_MAX_AGE } from "../shared/employeeConst";
+import { getSessionCookieOptions } from "./_core/cookies";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "fallback-secret-key");
 
@@ -39,14 +40,15 @@ export async function verifyEmployeeToken(token: string): Promise<{ employeeId: 
 /**
  * Set employee session cookie
  */
-export function setEmployeeSessionCookie(res: Response, token: string) {
+export function setEmployeeSessionCookie(req: Request, res: Response, token: string) {
+  const cookieOptions = getSessionCookieOptions(req);
+
   res.setHeader(
     "Set-Cookie",
     // @ts-ignore - cookie package has type issues
     cookie.serialize(EMPLOYEE_COOKIE_NAME, token, {
+      ...cookieOptions,
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
       maxAge: EMPLOYEE_SESSION_MAX_AGE / 1000, // Convert to seconds
       path: "/",
     })
@@ -56,14 +58,15 @@ export function setEmployeeSessionCookie(res: Response, token: string) {
 /**
  * Clear employee session cookie
  */
-export function clearEmployeeSessionCookie(res: Response) {
+export function clearEmployeeSessionCookie(req: Request, res: Response) {
+  const cookieOptions = getSessionCookieOptions(req);
+
   res.setHeader(
     "Set-Cookie",
     // @ts-ignore - cookie package has type issues
     cookie.serialize(EMPLOYEE_COOKIE_NAME, "", {
+      ...cookieOptions,
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
       maxAge: -1,
       path: "/",
     })
