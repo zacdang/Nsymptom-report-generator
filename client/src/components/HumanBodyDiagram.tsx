@@ -1,10 +1,13 @@
 import { motion } from "framer-motion";
 
+type BodyPartId = 'head' | 'body' | 'limbs' | 'mental';
+
 interface HumanBodyDiagramProps {
   gender: 'male' | 'female';
-  selectedPart: 'head' | 'body' | 'limbs' | 'mental' | null;
-  onPartClick: (part: 'head' | 'body' | 'limbs' | 'mental') => void;
-  selectedCounts?: { head: number; body: number; limbs: number; mental: number };
+  selectedPart: BodyPartId | null;
+  onPartClick: (part: BodyPartId) => void;
+  selectedCounts?: Record<BodyPartId, number>;
+  noneSelected?: Record<BodyPartId, boolean>;
 }
 
 const regions = [
@@ -13,7 +16,13 @@ const regions = [
   { id: 'limbs' as const, label: '四肢', top: '55%', height: '45%', left: '5%', width: '90%' },
 ];
 
-export function HumanBodyDiagram({ gender, selectedPart, onPartClick }: HumanBodyDiagramProps) {
+export function HumanBodyDiagram({
+  gender,
+  selectedPart,
+  onPartClick,
+  selectedCounts,
+  noneSelected,
+}: HumanBodyDiagramProps) {
   const imageSrc = gender === 'male' ? '/male_body.png' : '/female_body.png';
   const isMale = gender === 'male';
 
@@ -28,6 +37,12 @@ export function HumanBodyDiagram({ gender, selectedPart, onPartClick }: HumanBod
   const mentalInactive = isMale
     ? 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600 hover:shadow-md'
     : 'bg-white text-gray-600 border-gray-200 hover:border-pink-300 hover:text-pink-600 hover:shadow-md';
+
+  const getStatusLabel = (part: BodyPartId) => {
+    if (noneSelected?.[part]) return '无';
+    const count = selectedCounts?.[part] ?? 0;
+    return count > 0 ? `${count}项` : '未选';
+  };
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -75,6 +90,9 @@ export function HumanBodyDiagram({ gender, selectedPart, onPartClick }: HumanBod
                 }`}
               >
                 {region.label}
+                <span className="ml-2 text-[10px] font-semibold opacity-80">
+                  {getStatusLabel(region.id)}
+                </span>
               </span>
             </motion.div>
           );
@@ -90,7 +108,10 @@ export function HumanBodyDiagram({ gender, selectedPart, onPartClick }: HumanBod
         whileHover={{ scale: 1.03 }}
         whileTap={{ scale: 0.97 }}
       >
-        🧠 精神状态
+        <span>🧠 精神状态</span>
+        <span className="ml-2 text-[10px] font-semibold opacity-80">
+          {getStatusLabel('mental')}
+        </span>
       </motion.button>
 
       {/* Instruction */}

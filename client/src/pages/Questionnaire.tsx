@@ -23,7 +23,10 @@ import { useLocation } from "wouter";
 import { trpc } from "../lib/trpc";
 
 type Step = 0 | 1 | 2 | 3;
-type BodyPart = 'head' | 'body' | 'limbs' | 'mental' | null;
+type SymptomPart = 'head' | 'body' | 'limbs' | 'mental';
+type BodyPart = SymptomPart | null;
+
+const symptomParts: SymptomPart[] = ['head', 'body', 'limbs', 'mental'];
 
 interface FormData {
   employeeName: string;
@@ -70,6 +73,7 @@ export default function Questionnaire() {
   const [, setLocation] = useLocation();
   const [currentStep, setCurrentStep] = useState<Step>(0);
   const [selectedBodyPart, setSelectedBodyPart] = useState<BodyPart>(null);
+  const [noneSymptomParts, setNoneSymptomParts] = useState<SymptomPart[]>([]);
   const [formData, setFormData] = useState<FormData>({
     employeeName: "",
     name: "",
@@ -125,13 +129,76 @@ export default function Questionnaire() {
     ? MEDICAL_HISTORY.filter(m => !(m as any).femaleOnly)
     : MEDICAL_HISTORY;
 
+  const getSymptomsForPart = (part: SymptomPart): SymptomItem[] => {
+    switch (part) {
+      case 'head': return filterByGender(HEAD_SYMPTOMS);
+      case 'body': return filterByGender(BODY_SYMPTOMS);
+      case 'limbs': return filterByGender(LIMBS_SYMPTOMS);
+      case 'mental': return filterByGender(MENTAL_SYMPTOMS);
+    }
+  };
+
+  const getSelectedSymptomsForPart = (part: SymptomPart) => {
+    const partSymptomNames = new Set(getSymptomsForPart(part).map(symptom => symptom.name));
+    return formData.selectedSymptoms.filter(symptomName => partSymptomNames.has(symptomName));
+  };
+
+  const selectedSymptomCounts = symptomParts.reduce((acc, part) => {
+    acc[part] = getSelectedSymptomsForPart(part).length;
+    return acc;
+  }, {} as Record<SymptomPart, number>);
+
+  const noneSelectedByPart = symptomParts.reduce((acc, part) => {
+    acc[part] = noneSymptomParts.includes(part);
+    return acc;
+  }, {} as Record<SymptomPart, boolean>);
+
+  const isSymptomPartAnswered = (part: SymptomPart) =>
+    noneSymptomParts.includes(part) || getSelectedSymptomsForPart(part).length > 0;
+
+  const getMissingSymptomParts = () =>
+    symptomParts.filter(part => !isSymptomPartAnswered(part));
+
   const handleSymptomToggle = (symptomName: string) => {
+    const allSymptoms = [...HEAD_SYMPTOMS, ...BODY_SYMPTOMS, ...LIMBS_SYMPTOMS, ...MENTAL_SYMPTOMS];
+    const symptom = allSymptoms.find(item => item.name === symptomName);
+
+    if (symptom) {
+      setNoneSymptomParts(prev => prev.filter(part => part !== symptom.category));
+    }
+
     setFormData(prev => ({
       ...prev,
       selectedSymptoms: prev.selectedSymptoms.includes(symptomName)
         ? prev.selectedSymptoms.filter(s => s !== symptomName)
         : [...prev.selectedSymptoms, symptomName]
     }));
+  };
+
+  const handleNoSymptomsToggle = (part: SymptomPart) => {
+    const partSymptomNames = new Set(getSymptomsForPart(part).map(symptom => symptom.name));
+    const isNoneSelected = noneSymptomParts.includes(part);
+
+    setNoneSymptomParts(prev =>
+      isNoneSelected ? prev.filter(item => item !== part) : [...prev.filter(item => item !== part), part]
+    );
+
+    if (!isNoneSelected) {
+      setFormData(prev => ({
+        ...prev,
+        selectedSymptoms: prev.selectedSymptoms.filter(symptomName => !partSymptomNames.has(symptomName)),
+      }));
+    }
+  };
+
+  const validateSymptomStep = () => {
+    const missingParts = getMissingSymptomParts();
+    if (missingParts.length === 0) return true;
+
+    const firstMissingPart = missingParts[0];
+    setSelectedBodyPart(firstMissingPart);
+    toast.error(`请完成${partTitles[firstMissingPart]}：如无症状请选择“无”`);
+    return false;
   };
 
   const handleStartQuestionnaire = () => {
@@ -149,6 +216,9 @@ export default function Questionnaire() {
         toast.error("请填写必填项：性别、年龄范围");
         return;
       }
+    }
+    if (currentStep === 2 && !validateSymptomStep()) {
+      return;
     }
     if (currentStep < 3) {
       setCurrentStep((prev) => (prev + 1) as Step);
@@ -207,6 +277,7 @@ export default function Questionnaire() {
         });
         setCurrentStep(0);
         setSelectedBodyPart(null);
+        setNoneSymptomParts([]);
       }, 1500);
     },
     onError: (error: any) => {
@@ -217,6 +288,11 @@ export default function Questionnaire() {
   const handleSubmit = async () => {
     if (!formData.employeeName || !formData.name || !formData.gender || !formData.ageRange) {
       toast.error("请填写必填项");
+      return;
+    }
+    if (!validateSymptomStep()) {
+      setCurrentStep(2);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -233,13 +309,7 @@ export default function Questionnaire() {
   };
 
   const getCurrentSymptoms = (): SymptomItem[] => {
-    switch (selectedBodyPart) {
-      case 'head': return filterByGender(HEAD_SYMPTOMS);
-      case 'body': return filterByGender(BODY_SYMPTOMS);
-      case 'limbs': return filterByGender(LIMBS_SYMPTOMS);
-      case 'mental': return filterByGender(MENTAL_SYMPTOMS);
-      default: return [];
-    }
+    return selectedBodyPart ? getSymptomsForPart(selectedBodyPart) : [];
   };
 
   const groupSymptomsBySubcategory = (symptoms: SymptomItem[]) => {
@@ -519,6 +589,8 @@ export default function Questionnaire() {
                         gender={formData.gender as 'male' | 'female'}
                         selectedPart={selectedBodyPart}
                         onPartClick={setSelectedBodyPart}
+                        selectedCounts={selectedSymptomCounts}
+                        noneSelected={noneSelectedByPart}
                       />
                     </div>
                   </div>
@@ -546,6 +618,25 @@ export default function Questionnaire() {
                             transition={{ duration: 0.2 }}
                             className="space-y-5"
                           >
+                            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+                              <motion.label
+                                whileTap={{ scale: 0.98 }}
+                                className={`flex items-center gap-2.5 rounded-lg cursor-pointer transition-all duration-150 ${
+                                  noneSelectedByPart[selectedBodyPart]
+                                    ? 'text-emerald-700'
+                                    : 'text-slate-600'
+                                }`}
+                              >
+                                <Checkbox
+                                  checked={noneSelectedByPart[selectedBodyPart]}
+                                  onCheckedChange={() => handleNoSymptomsToggle(selectedBodyPart)}
+                                />
+                                <span className="text-sm font-semibold">无</span>
+                              </motion.label>
+                              <p className="text-xs text-slate-400 mt-2">
+                                如果这个部位没有相关症状，请选择“无”；选择具体症状会自动取消“无”。
+                              </p>
+                            </div>
                             {Object.entries(groupSymptomsBySubcategory(getCurrentSymptoms())).map(([subcategory, symptoms]) => (
                               <div key={subcategory}>
                                 {subcategory !== '其他' && symptoms.length > 0 && (
