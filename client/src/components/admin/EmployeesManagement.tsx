@@ -10,9 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Trash2, Plus, Key, ChevronDown, ChevronRight, Eye, Users, FileSpreadsheet, Upload } from "lucide-react";
+import { Trash2, Plus, Key, ChevronDown, ChevronRight, Eye, Users, FileSpreadsheet, Upload, Activity, Clock, FileText, Trophy, UserCheck } from "lucide-react";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
+
+type ActivityPeriodKey = "today" | "week" | "month" | "allTime";
 
 type BulkEmployeeImportRow = {
   name: string;
@@ -26,6 +28,25 @@ type BulkEmployeeImportPreview = {
   duplicateRows: number;
   conflictNames: string[];
   blankRows: number;
+};
+
+type EmployeeActivityLeader = {
+  employeeId: number;
+  name: string;
+  role: "admin" | "employee";
+  uniqueClientCount: number;
+  reportCount: number;
+  clientSubmissionCount: number;
+  activityScore: number;
+  lastActivityAt: Date | string | null;
+};
+
+type EmployeeRecentActivity = {
+  employeeId: number;
+  employeeName: string;
+  activityType: "client" | "report";
+  clientName: string | null;
+  occurredAt: Date | string;
 };
 
 const normalizeImportValue = (value: string) =>
@@ -135,6 +156,202 @@ const parseEmployeeImportText = (text: string): BulkEmployeeImportPreview => {
     blankRows,
   };
 };
+
+const formatActivityDate = (date: Date | string | null) => {
+  if (!date) return "-";
+  try {
+    return format(new Date(date), "MM-dd HH:mm", { locale: zhCN });
+  } catch {
+    return "-";
+  }
+};
+
+function MetricTile({
+  icon: Icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: typeof Users;
+  label: string;
+  value: number | string;
+  detail?: string;
+}) {
+  return (
+    <div className="rounded border bg-white px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs text-gray-500">{label}</p>
+          <p className="mt-1 text-2xl font-semibold text-gray-900">{value}</p>
+        </div>
+        <Icon className="h-5 w-5 text-green-700" />
+      </div>
+      {detail && <p className="mt-1 text-xs text-gray-500">{detail}</p>}
+    </div>
+  );
+}
+
+function ActivityLeaderList({
+  leaders,
+  emptyText = "暂无活动",
+}: {
+  leaders: EmployeeActivityLeader[];
+  emptyText?: string;
+}) {
+  if (!leaders.length) {
+    return <p className="py-4 text-sm text-gray-500">{emptyText}</p>;
+  }
+
+  return (
+    <div className="divide-y">
+      {leaders.map((leader, index) => (
+        <div key={leader.employeeId} className="flex items-center justify-between gap-3 py-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="w-5 shrink-0 text-sm font-semibold text-gray-400">{index + 1}</span>
+              <span className="truncate font-medium text-gray-900">{leader.name}</span>
+              {leader.role === "admin" && <Badge variant="outline" className="text-xs">管理员</Badge>}
+            </div>
+            <p className="mt-0.5 text-xs text-gray-500">
+              有效客户 {leader.uniqueClientCount} · 报告 {leader.reportCount}
+            </p>
+          </div>
+          <Badge variant="secondary" className="shrink-0">{leader.activityScore}</Badge>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmployeeActivityOverview() {
+  const { data: stats, isLoading } = trpc.admin.employees.activityStats.useQuery();
+  const periodCards: Array<{ key: ActivityPeriodKey; title: string }> = [
+    { key: "today", title: "今日活跃" },
+    { key: "week", title: "本周活跃" },
+    { key: "month", title: "本月活跃" },
+    { key: "allTime", title: "历史活跃" },
+  ];
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-6 text-sm text-gray-500">加载成员数据中...</CardContent>
+      </Card>
+    );
+  }
+
+  if (!stats) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5 text-green-700" />
+            成员概览
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <MetricTile
+              icon={Users}
+              label="成员总数"
+              value={stats.totals.members}
+              detail={`伙伴 ${stats.totals.employees} · 管理员 ${stats.totals.admins}`}
+            />
+            <MetricTile
+              icon={UserCheck}
+              label="有效客户"
+              value={stats.totals.uniqueClientCount}
+              detail="已排除同名本人和重复客户"
+            />
+            <MetricTile
+              icon={FileText}
+              label="报告生成"
+              value={stats.totals.reportCount}
+              detail="同一客户重复报告只计一次"
+            />
+            <MetricTile
+              icon={Activity}
+              label="今日活跃成员"
+              value={stats.periods.today.activeMembers}
+              detail={`今日活跃值 ${stats.periods.today.activityScore}`}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-green-700" />
+              最近活动
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {stats.recentActivity.length === 0 ? (
+              <p className="py-4 text-sm text-gray-500">暂无活动</p>
+            ) : (
+              <div className="divide-y">
+                {stats.recentActivity.map((activity: EmployeeRecentActivity) => (
+                  <div
+                    key={`${activity.employeeId}-${activity.activityType}-${activity.clientName ?? "none"}-${String(activity.occurredAt)}`}
+                    className="flex items-center justify-between gap-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate font-medium text-gray-900">{activity.employeeName}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {activity.activityType === "report" ? "报告" : "客户"}
+                        </Badge>
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-gray-500">{activity.clientName || "未标记客户"}</p>
+                    </div>
+                    <span className="shrink-0 text-xs text-gray-500">{formatActivityDate(activity.occurredAt)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-green-700" />
+              报告数最多
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ActivityLeaderList leaders={stats.topReportGenerators} emptyText="暂无报告" />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {periodCards.map(({ key, title }) => {
+          const period = stats.periods[key];
+          return (
+            <Card key={key}>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between gap-2 text-base">
+                  <span>{title}</span>
+                  <Badge variant="secondary">{period.activeMembers} 人</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ActivityLeaderList leaders={period.leaders} />
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function EmployeeCustomers({ employeeId }: { employeeId: number }) {
   const { data: customers, isLoading } = trpc.questionnaire.byEmployeeId.useQuery({ employeeId });
@@ -408,6 +625,7 @@ export default function EmployeesManagement() {
     onSuccess: () => {
       toast.success("伙伴创建成功");
       utils.admin.employees.list.invalidate();
+      utils.admin.employees.activityStats.invalidate();
       setIsCreateOpen(false);
       setFormData({ password: "", name: "", role: "employee" });
     },
@@ -420,6 +638,7 @@ export default function EmployeesManagement() {
     onSuccess: (result) => {
       setBulkImportResult(result);
       utils.admin.employees.list.invalidate();
+      utils.admin.employees.activityStats.invalidate();
       toast.success(`批量导入完成：新增 ${result.created.length} 位，跳过 ${result.skippedExisting.length} 位`);
     },
     onError: (error) => {
@@ -442,6 +661,7 @@ export default function EmployeesManagement() {
     onSuccess: () => {
       toast.success("伙伴删除成功");
       utils.admin.employees.list.invalidate();
+      utils.admin.employees.activityStats.invalidate();
     },
     onError: (error) => {
       toast.error(error.message || "删除伙伴失败");
@@ -484,9 +704,15 @@ export default function EmployeesManagement() {
   };
 
   return (
-    <Card>
+    <div className="space-y-4">
+      <EmployeeActivityOverview />
+
+      <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle>伙伴管理</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          伙伴管理
+          {employees && <Badge variant="secondary">{employees.length} 位成员</Badge>}
+        </CardTitle>
         <div className="flex flex-wrap gap-2">
           <Dialog open={isBulkImportOpen} onOpenChange={(open) => {
             setIsBulkImportOpen(open);
@@ -737,6 +963,7 @@ export default function EmployeesManagement() {
           </div>
         )}
       </CardContent>
-    </Card>
+      </Card>
+    </div>
   );
 }

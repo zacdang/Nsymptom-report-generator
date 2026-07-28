@@ -72,6 +72,15 @@ export async function getQuestionnairesByEmployeeId(employeeId: number) {
     .orderBy(desc(questionnaireResponses.createdAt));
 }
 
+export async function getAllQuestionnaireResponses() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db
+    .select()
+    .from(questionnaireResponses)
+    .orderBy(desc(questionnaireResponses.createdAt));
+}
+
 export async function getQuestionnaireResponse(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

@@ -48,6 +48,334 @@ const makeUniqueEmployeeUsername = (name: string, usedUsernames: Set<string>) =>
   }
 };
 
+type ActivityPeriodKey = "today" | "week" | "month" | "allTime";
+type ActivityKind = "client" | "report";
+
+type MutableActivityPeriodStats = {
+  clientKeys: Set<string>;
+  reportKeys: Set<string>;
+  clientSubmissionCount: number;
+  lastActivityAt: Date | null;
+};
+
+type MutableEmployeeActivityStats = {
+  employeeId: number;
+  name: string;
+  role: "admin" | "employee";
+  periods: Record<ActivityPeriodKey, MutableActivityPeriodStats>;
+  lastActivityAt: Date | null;
+  lastActivityType: ActivityKind | null;
+  lastClientName: string | null;
+};
+
+const CHINA_TIME_OFFSET_MS = 8 * 60 * 60 * 1000;
+const ACTIVITY_PERIOD_LABELS: Record<ActivityPeriodKey, string> = {
+  today: "今日",
+  week: "本周",
+  month: "本月",
+  allTime: "历史",
+};
+
+const normalizeActivityName = (name: string) =>
+  normalizeEmployeeName(name).replace(/\s/g, "").toLocaleLowerCase("zh-CN");
+
+const toValidDate = (value: unknown): Date | null => {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const getChinaPeriodStarts = (now = new Date()) => {
+  const shiftedNow = new Date(now.getTime() + CHINA_TIME_OFFSET_MS);
+  const year = shiftedNow.getUTCFullYear();
+  const month = shiftedNow.getUTCMonth();
+  const date = shiftedNow.getUTCDate();
+  const dayOfWeek = shiftedNow.getUTCDay() || 7;
+  const chinaMidnightToUtcDate = (day: number) =>
+    new Date(Date.UTC(year, month, day) - CHINA_TIME_OFFSET_MS);
+
+  return {
+    today: chinaMidnightToUtcDate(date),
+    week: chinaMidnightToUtcDate(date - dayOfWeek + 1),
+    month: new Date(Date.UTC(year, month, 1) - CHINA_TIME_OFFSET_MS),
+    allTime: null,
+  } satisfies Record<ActivityPeriodKey, Date | null>;
+};
+
+const createEmptyActivityPeriodStats = (): MutableActivityPeriodStats => ({
+  clientKeys: new Set<string>(),
+  reportKeys: new Set<string>(),
+  clientSubmissionCount: 0,
+  lastActivityAt: null,
+});
+
+const createEmptyEmployeeActivityStats = (employee: Employee): MutableEmployeeActivityStats => ({
+  employeeId: employee.id,
+  name: employee.name,
+  role: employee.role,
+  periods: {
+    today: createEmptyActivityPeriodStats(),
+    week: createEmptyActivityPeriodStats(),
+    month: createEmptyActivityPeriodStats(),
+    allTime: createEmptyActivityPeriodStats(),
+  },
+  lastActivityAt: null,
+  lastActivityType: null,
+  lastClientName: null,
+});
+
+const isSameOrAfter = (date: Date, start: Date | null) =>
+  start === null || date.getTime() >= start.getTime();
+
+const isLaterThan = (left: Date, right: Date | null) =>
+  right === null || left.getTime() > right.getTime();
+
+const parseReportClientName = (symptoms: unknown) => {
+  if (typeof symptoms !== "string") return "";
+  const match = symptoms.trim().match(/^\[问卷生成\]\s*(.+)$/);
+  return match ? normalizeEmployeeName(match[1]) : "";
+};
+
+const getEmployeeActivityStats = async () => {
+  const [employees, questionnaires, reports] = await Promise.all([
+    db.getAllEmployees(),
+    db.getAllQuestionnaireResponses(),
+    db.getAllReports(),
+  ]);
+  const periodStarts = getChinaPeriodStarts();
+  const employeeById = new Map(employees.map((employee) => [employee.id, employee]));
+  const statsByEmployee = new Map(
+    employees.map((employee) => [employee.id, createEmptyEmployeeActivityStats(employee)])
+  );
+  const recentEventByKey = new Map<string, {
+    employeeId: number;
+    employeeName: string;
+    activityType: ActivityKind;
+    clientName: string | null;
+    occurredAt: Date;
+  }>();
+
+  const recordRecentEvent = (
+    key: string,
+    event: {
+      employeeId: number;
+      employeeName: string;
+      activityType: ActivityKind;
+      clientName: string | null;
+      occurredAt: Date;
+    }
+  ) => {
+    const existing = recentEventByKey.get(key);
+    if (!existing || event.occurredAt.getTime() > existing.occurredAt.getTime()) {
+      recentEventByKey.set(key, event);
+    }
+  };
+
+  const updateLastActivity = (
+    employeeStats: MutableEmployeeActivityStats,
+    activityType: ActivityKind,
+    clientName: string | null,
+    occurredAt: Date
+  ) => {
+    if (isLaterThan(occurredAt, employeeStats.lastActivityAt)) {
+      employeeStats.lastActivityAt = occurredAt;
+      employeeStats.lastActivityType = activityType;
+      employeeStats.lastClientName = clientName;
+    }
+  };
+
+  questionnaires.forEach((questionnaire: any) => {
+    const employeeId = questionnaire.employeeId;
+    const employee = employeeById.get(employeeId);
+    const employeeStats = statsByEmployee.get(employeeId);
+    const occurredAt = toValidDate(questionnaire.createdAt);
+    const clientName = normalizeEmployeeName(questionnaire.name ?? "");
+    const clientKey = normalizeActivityName(clientName);
+
+    if (!employee || !employeeStats || !occurredAt || !clientKey) return;
+    if (clientKey === normalizeActivityName(employee.name)) return;
+
+    (Object.keys(periodStarts) as ActivityPeriodKey[]).forEach((periodKey) => {
+      if (!isSameOrAfter(occurredAt, periodStarts[periodKey])) return;
+      const periodStats = employeeStats.periods[periodKey];
+      periodStats.clientKeys.add(clientKey);
+      periodStats.clientSubmissionCount += 1;
+      if (isLaterThan(occurredAt, periodStats.lastActivityAt)) {
+        periodStats.lastActivityAt = occurredAt;
+      }
+    });
+
+    updateLastActivity(employeeStats, "client", clientName, occurredAt);
+    recordRecentEvent(`client:${employee.id}:${clientKey}`, {
+      employeeId: employee.id,
+      employeeName: employee.name,
+      activityType: "client",
+      clientName,
+      occurredAt,
+    });
+  });
+
+  reports.forEach((report: any) => {
+    const employeeId = report.employeeId;
+    const employee = employeeById.get(employeeId);
+    const employeeStats = statsByEmployee.get(employeeId);
+    const occurredAt = toValidDate(report.createdAt);
+    const clientName = parseReportClientName(report.symptoms);
+    const clientKey = normalizeActivityName(clientName);
+
+    if (!employee || !employeeStats || !occurredAt) return;
+    if (clientKey && clientKey === normalizeActivityName(employee.name)) return;
+
+    const reportKey = clientKey || `report:${report.id}`;
+    (Object.keys(periodStarts) as ActivityPeriodKey[]).forEach((periodKey) => {
+      if (!isSameOrAfter(occurredAt, periodStarts[periodKey])) return;
+      const periodStats = employeeStats.periods[periodKey];
+      periodStats.reportKeys.add(reportKey);
+      if (isLaterThan(occurredAt, periodStats.lastActivityAt)) {
+        periodStats.lastActivityAt = occurredAt;
+      }
+    });
+
+    updateLastActivity(employeeStats, "report", clientName || null, occurredAt);
+    recordRecentEvent(`report:${employee.id}:${reportKey}`, {
+      employeeId: employee.id,
+      employeeName: employee.name,
+      activityType: "report",
+      clientName: clientName || null,
+      occurredAt,
+    });
+  });
+
+  const finalizedEmployees = Array.from(statsByEmployee.values()).map((employeeStats) => {
+    const periods = (Object.keys(employeeStats.periods) as ActivityPeriodKey[]).reduce((acc, periodKey) => {
+      const periodStats = employeeStats.periods[periodKey];
+      const uniqueClientCount = periodStats.clientKeys.size;
+      const reportCount = periodStats.reportKeys.size;
+      acc[periodKey] = {
+        uniqueClientCount,
+        reportCount,
+        clientSubmissionCount: periodStats.clientSubmissionCount,
+        activityScore: uniqueClientCount + reportCount,
+        lastActivityAt: periodStats.lastActivityAt,
+      };
+      return acc;
+    }, {} as Record<ActivityPeriodKey, {
+      uniqueClientCount: number;
+      reportCount: number;
+      clientSubmissionCount: number;
+      activityScore: number;
+      lastActivityAt: Date | null;
+    }>);
+
+    return {
+      employeeId: employeeStats.employeeId,
+      name: employeeStats.name,
+      role: employeeStats.role,
+      periods,
+      lastActivityAt: employeeStats.lastActivityAt,
+      lastActivityType: employeeStats.lastActivityType,
+      lastClientName: employeeStats.lastClientName,
+    };
+  });
+
+  const rankEmployees = (periodKey: ActivityPeriodKey) =>
+    finalizedEmployees
+      .filter((employee) => employee.periods[periodKey].activityScore > 0)
+      .sort((a, b) => {
+        const periodA = a.periods[periodKey];
+        const periodB = b.periods[periodKey];
+        return (
+          periodB.activityScore - periodA.activityScore ||
+          periodB.uniqueClientCount - periodA.uniqueClientCount ||
+          periodB.reportCount - periodA.reportCount ||
+          (b.lastActivityAt?.getTime() ?? 0) - (a.lastActivityAt?.getTime() ?? 0)
+        );
+      })
+      .slice(0, 5)
+      .map((employee) => ({
+        employeeId: employee.employeeId,
+        name: employee.name,
+        role: employee.role,
+        ...employee.periods[periodKey],
+      }));
+
+  const topReportGenerators = finalizedEmployees
+    .filter((employee) => employee.periods.allTime.reportCount > 0)
+    .sort((a, b) => {
+      const periodA = a.periods.allTime;
+      const periodB = b.periods.allTime;
+      return (
+        periodB.reportCount - periodA.reportCount ||
+        periodB.uniqueClientCount - periodA.uniqueClientCount ||
+        (b.lastActivityAt?.getTime() ?? 0) - (a.lastActivityAt?.getTime() ?? 0)
+      );
+    })
+    .slice(0, 8)
+    .map((employee) => ({
+      employeeId: employee.employeeId,
+      name: employee.name,
+      role: employee.role,
+      ...employee.periods.allTime,
+    }));
+
+  const getPeriodActivityScore = (periodKey: ActivityPeriodKey) =>
+    finalizedEmployees.reduce(
+      (total, employee) => total + employee.periods[periodKey].activityScore,
+      0
+    );
+
+  const recentActivity = Array.from(recentEventByKey.values())
+    .sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime())
+    .slice(0, 8);
+
+  const allTimeTotals = finalizedEmployees.reduce(
+    (totals, employee) => {
+      totals.uniqueClientCount += employee.periods.allTime.uniqueClientCount;
+      totals.reportCount += employee.periods.allTime.reportCount;
+      return totals;
+    },
+    { uniqueClientCount: 0, reportCount: 0 }
+  );
+
+  return {
+    totals: {
+      members: employees.length,
+      admins: employees.filter((employee) => employee.role === "admin").length,
+      employees: employees.filter((employee) => employee.role === "employee").length,
+      uniqueClientCount: allTimeTotals.uniqueClientCount,
+      reportCount: allTimeTotals.reportCount,
+    },
+    periods: {
+      today: {
+        label: ACTIVITY_PERIOD_LABELS.today,
+        activeMembers: finalizedEmployees.filter((employee) => employee.periods.today.activityScore > 0).length,
+        activityScore: getPeriodActivityScore("today"),
+        leaders: rankEmployees("today"),
+      },
+      week: {
+        label: ACTIVITY_PERIOD_LABELS.week,
+        activeMembers: finalizedEmployees.filter((employee) => employee.periods.week.activityScore > 0).length,
+        activityScore: getPeriodActivityScore("week"),
+        leaders: rankEmployees("week"),
+      },
+      month: {
+        label: ACTIVITY_PERIOD_LABELS.month,
+        activeMembers: finalizedEmployees.filter((employee) => employee.periods.month.activityScore > 0).length,
+        activityScore: getPeriodActivityScore("month"),
+        leaders: rankEmployees("month"),
+      },
+      allTime: {
+        label: ACTIVITY_PERIOD_LABELS.allTime,
+        activeMembers: finalizedEmployees.filter((employee) => employee.periods.allTime.activityScore > 0).length,
+        activityScore: getPeriodActivityScore("allTime"),
+        leaders: rankEmployees("allTime"),
+      },
+    },
+    topReportGenerators,
+    recentActivity,
+  };
+};
+
 const symptomNameSchema = z.string()
   .trim()
   .min(1, "Symptom name is required")
@@ -221,6 +549,10 @@ export const appRouter = router({
     employees: router({
       list: adminProcedure.query(async () => {
         return await db.getAllEmployees();
+      }),
+
+      activityStats: adminProcedure.query(async () => {
+        return await getEmployeeActivityStats();
       }),
       
       create: adminProcedure
