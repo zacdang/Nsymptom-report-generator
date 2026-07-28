@@ -130,7 +130,7 @@ export default function SymptomAnalysisManagement() {
   });
 
   // Get unique categories for filter
-  const categories = entries ? [...new Set(entries.map(e => e.category))] : [];
+  const categories = entries ? Array.from(new Set(entries.map(e => e.category))) : [];
 
   return (
     <Card>

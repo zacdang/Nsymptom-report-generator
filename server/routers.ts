@@ -19,6 +19,35 @@ const nameSchema = z.string().min(1, "Name is required").max(100);
 
 const passwordSchema = z.string();
 
+const bulkEmployeeRowSchema = z.object({
+  name: z.string(),
+  password: z.string(),
+  sourceRowNumber: z.number().int().positive().optional(),
+});
+
+const normalizeEmployeeName = (name: string) =>
+  name.replace(/[\u00a0\u3000]/g, " ").replace(/\s+/g, " ").trim();
+
+const normalizeEmployeePassword = (password: string) =>
+  password.replace(/[\u00a0\u3000]/g, " ").trim();
+
+const makeUniqueEmployeeUsername = (name: string, usedUsernames: Set<string>) => {
+  const base = name.slice(0, 100) || "employee";
+  if (!usedUsernames.has(base)) {
+    usedUsernames.add(base);
+    return base;
+  }
+
+  for (let suffixNumber = 2; ; suffixNumber += 1) {
+    const suffix = `_${suffixNumber}`;
+    const candidate = `${base.slice(0, 100 - suffix.length)}${suffix}`;
+    if (!usedUsernames.has(candidate)) {
+      usedUsernames.add(candidate);
+      return candidate;
+    }
+  }
+};
+
 const symptomNameSchema = z.string()
   .trim()
   .min(1, "Symptom name is required")
@@ -46,7 +75,10 @@ export const appRouter = router({
         password: z.string() // Don't validate password on login, only on creation
       }))
       .mutation(async ({ input, ctx }) => {
-        const employee = await authenticateEmployee(input.name, input.password);
+        const employee = await authenticateEmployee(
+          normalizeEmployeeName(input.name),
+          normalizeEmployeePassword(input.password)
+        );
         
         if (!employee) {
           throw new TRPCError({
@@ -198,22 +230,140 @@ export const appRouter = router({
           role: z.enum(["admin", "employee"]),
         }))
         .mutation(async ({ input }) => {
-          // Check if name already exists
-          const existing = await db.getEmployeeByName(input.name);
-          if (existing) {
+          const name = normalizeEmployeeName(input.name);
+          const password = normalizeEmployeePassword(input.password);
+          if (!name) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "姓名不能为空",
+            });
+          }
+
+          if (!password) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "密码不能为空",
+            });
+          }
+
+          const employees = await db.getAllEmployees();
+          const existingNames = new Set(employees.map((employee) => normalizeEmployeeName(employee.name)));
+          if (existingNames.has(name)) {
             throw new TRPCError({
               code: "CONFLICT",
               message: "该姓名已存在",
             });
           }
           
-          const passwordHash = await hashPassword(input.password);
+          const usedUsernames = new Set(employees.map((employee) => employee.username));
+          const passwordHash = await hashPassword(password);
           return await db.createEmployee({
-            username: input.name,
+            username: makeUniqueEmployeeUsername(name, usedUsernames),
             passwordHash,
-            name: input.name,
+            name,
             role: input.role,
           });
+        }),
+
+      bulkCreate: adminProcedure
+        .input(z.object({
+          rows: z.array(bulkEmployeeRowSchema).min(1).max(1000),
+        }))
+        .mutation(async ({ input }) => {
+          const invalidRows: Array<{ sourceRowNumber: number; reason: string }> = [];
+          const dedupedRows = new Map<string, {
+            name: string;
+            password: string;
+            sourceRowNumber: number;
+            occurrences: number;
+          }>();
+          const passwordConflictNames = new Set<string>();
+
+          input.rows.forEach((row, index) => {
+            const sourceRowNumber = row.sourceRowNumber ?? index + 1;
+            const name = normalizeEmployeeName(row.name);
+            const password = normalizeEmployeePassword(row.password);
+
+            if (!name || !password) {
+              invalidRows.push({
+                sourceRowNumber,
+                reason: "姓名或密码为空",
+              });
+              return;
+            }
+
+            if (name.length > 100) {
+              invalidRows.push({
+                sourceRowNumber,
+                reason: "姓名过长",
+              });
+              return;
+            }
+
+            const existing = dedupedRows.get(name);
+            if (existing) {
+              if (existing.password !== password) {
+                passwordConflictNames.add(name);
+              }
+              dedupedRows.set(name, {
+                name,
+                password,
+                sourceRowNumber,
+                occurrences: existing.occurrences + 1,
+              });
+              return;
+            }
+
+            dedupedRows.set(name, {
+              name,
+              password,
+              sourceRowNumber,
+              occurrences: 1,
+            });
+          });
+
+          const employees = await db.getAllEmployees();
+          const existingNames = new Set(employees.map((employee) => normalizeEmployeeName(employee.name)));
+          const usedUsernames = new Set(employees.map((employee) => employee.username));
+          const created: Array<{ id: number; name: string; role: "admin" | "employee" }> = [];
+          const skippedExisting: string[] = [];
+
+          for (const row of Array.from(dedupedRows.values())) {
+            if (existingNames.has(row.name)) {
+              skippedExisting.push(row.name);
+              continue;
+            }
+
+            const passwordHash = await hashPassword(row.password);
+            const employee = await db.createEmployee({
+              username: makeUniqueEmployeeUsername(row.name, usedUsernames),
+              passwordHash,
+              name: row.name,
+              role: "employee",
+            });
+
+            created.push({
+              id: employee.id,
+              name: employee.name,
+              role: employee.role,
+            });
+            existingNames.add(row.name);
+          }
+
+          const duplicateInputRows = Array.from(dedupedRows.values())
+            .reduce((total, row) => total + row.occurrences - 1, 0);
+
+          return {
+            success: true,
+            inputRows: input.rows.length,
+            validRows: input.rows.length - invalidRows.length,
+            uniqueNames: dedupedRows.size,
+            duplicateInputRows,
+            passwordConflictNames: Array.from(passwordConflictNames),
+            created,
+            skippedExisting,
+            invalidRows,
+          };
         }),
       
       resetPassword: adminProcedure
@@ -222,7 +372,15 @@ export const appRouter = router({
           newPassword: passwordSchema,
         }))
         .mutation(async ({ input }) => {
-          const passwordHash = await hashPassword(input.newPassword);
+          const newPassword = normalizeEmployeePassword(input.newPassword);
+          if (!newPassword) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "密码不能为空",
+            });
+          }
+
+          const passwordHash = await hashPassword(newPassword);
           await db.updateEmployee(input.id, { passwordHash });
           return { success: true };
         }),
@@ -494,7 +652,7 @@ export const appRouter = router({
           return await db.searchQuestionnaireByName(input.name);
         }
         const myCustomers = await db.getQuestionnairesByEmployeeId(ctx.employee.id);
-        return myCustomers.filter(c => c.name.includes(input.name));
+        return myCustomers.filter((c: any) => c.name.includes(input.name));
       }),
     
     get: employeeProcedure

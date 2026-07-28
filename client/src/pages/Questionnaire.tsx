@@ -302,8 +302,14 @@ export default function Questionnaire() {
       return { name, category: symptom?.category || 'body' };
     });
 
+    const gender = formData.gender;
+    if (gender !== 'male' && gender !== 'female') {
+      return;
+    }
+
     submitMutation.mutate({
       ...formData,
+      gender,
       selectedSymptoms: symptomsWithCategory,
     });
   };

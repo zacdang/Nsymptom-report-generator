@@ -336,7 +336,7 @@ async function startServer() {
       // Try drizzle ORM query on reports
       let drizzleReportsQuery = 'skipped';
       try {
-        const { reports: reportsTable } = await import("../drizzle/schema");
+        const { reports: reportsTable } = await import("../../drizzle/schema");
         const rows = await db.select().from(reportsTable).limit(1);
         drizzleReportsQuery = `OK - rows: ${JSON.stringify(rows)}`;
       } catch (e: any) {
@@ -364,7 +364,7 @@ async function startServer() {
       // Try drizzle ORM query on report_templates
       let drizzleTemplatesQuery = 'skipped';
       try {
-        const { reportTemplates: templatesTable } = await import("../drizzle/schema");
+        const { reportTemplates: templatesTable } = await import("../../drizzle/schema");
         const rows = await db.select().from(templatesTable).limit(1);
         drizzleTemplatesQuery = `OK - rows: ${JSON.stringify(rows)}`;
       } catch (e: any) {

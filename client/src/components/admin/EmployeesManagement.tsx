@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,9 +10,131 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Trash2, Plus, Key, ChevronDown, ChevronRight, Eye, Users } from "lucide-react";
+import { Trash2, Plus, Key, ChevronDown, ChevronRight, Eye, Users, FileSpreadsheet, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
+
+type BulkEmployeeImportRow = {
+  name: string;
+  password: string;
+  sourceRowNumber: number;
+};
+
+type BulkEmployeeImportPreview = {
+  rows: BulkEmployeeImportRow[];
+  uniqueNames: number;
+  duplicateRows: number;
+  conflictNames: string[];
+  blankRows: number;
+};
+
+const normalizeImportValue = (value: string) =>
+  value.replace(/\u00a0|\u3000/g, " ").trim();
+
+const parseDelimitedLine = (line: string, delimiter: string) => {
+  const cells: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const nextChar = line[index + 1];
+
+    if (char === '"' && inQuotes && nextChar === '"') {
+      current += '"';
+      index += 1;
+      continue;
+    }
+
+    if (char === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (char === delimiter && !inQuotes) {
+      cells.push(current);
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  cells.push(current);
+  return cells.map(normalizeImportValue);
+};
+
+const parseEmployeeImportText = (text: string): BulkEmployeeImportPreview => {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim().length > 0);
+
+  if (lines.length === 0) {
+    return {
+      rows: [],
+      uniqueNames: 0,
+      duplicateRows: 0,
+      conflictNames: [],
+      blankRows: 0,
+    };
+  }
+
+  const delimiter = lines.some((line) => line.includes("\t")) ? "\t" : ",";
+  const parsedLines = lines.map((line) => parseDelimitedLine(line, delimiter));
+  const headers = parsedLines[0].map((cell) => normalizeImportValue(cell));
+  const nameIndex = headers.indexOf("姓名");
+  const passwordIndex = headers.indexOf("密码设置");
+  const hasHeader = nameIndex >= 0 && passwordIndex >= 0;
+  const finalNameIndex = hasHeader ? nameIndex : 0;
+  const finalPasswordIndex = hasHeader ? passwordIndex : 1;
+  const dataLines = hasHeader ? parsedLines.slice(1) : parsedLines;
+  const sourceRowOffset = hasHeader ? 2 : 1;
+  const rows: BulkEmployeeImportRow[] = [];
+  let blankRows = 0;
+
+  dataLines.forEach((cells, index) => {
+    const name = normalizeImportValue(cells[finalNameIndex] ?? "");
+    const password = normalizeImportValue(cells[finalPasswordIndex] ?? "");
+
+    if (!name && !password) {
+      blankRows += 1;
+      return;
+    }
+
+    rows.push({
+      name,
+      password,
+      sourceRowNumber: index + sourceRowOffset,
+    });
+  });
+
+  const seenPasswordsByName = new Map<string, Set<string>>();
+  let duplicateRows = 0;
+
+  rows.forEach((row) => {
+    const passwords = seenPasswordsByName.get(row.name);
+    if (passwords) {
+      duplicateRows += 1;
+      passwords.add(row.password);
+      return;
+    }
+
+    seenPasswordsByName.set(row.name, new Set([row.password]));
+  });
+
+  const conflictNames = Array.from(seenPasswordsByName.entries())
+    .filter(([, passwords]) => passwords.size > 1)
+    .map(([name]) => name);
+
+  return {
+    rows,
+    uniqueNames: seenPasswordsByName.size,
+    duplicateRows,
+    conflictNames,
+    blankRows,
+  };
+};
 
 function EmployeeCustomers({ employeeId }: { employeeId: number }) {
   const { data: customers, isLoading } = trpc.questionnaire.byEmployeeId.useQuery({ employeeId });
@@ -53,7 +176,7 @@ function EmployeeCustomers({ employeeId }: { employeeId: number }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {customers.map((c) => (
+            {customers.map((c: any) => (
               <TableRow key={c.id} className="text-sm">
                 <TableCell className="py-1 font-medium">{c.name}</TableCell>
                 <TableCell className="py-1">
@@ -250,8 +373,11 @@ function EmployeeCustomers({ employeeId }: { employeeId: number }) {
 
 export default function EmployeesManagement() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [resetPasswordEmployee, setResetPasswordEmployee] = useState<any>(null);
   const [expandedEmployee, setExpandedEmployee] = useState<number | null>(null);
+  const [bulkImportText, setBulkImportText] = useState("");
+  const [bulkImportResult, setBulkImportResult] = useState<any>(null);
   const [formData, setFormData] = useState({
     password: "",
     name: "",
@@ -261,6 +387,22 @@ export default function EmployeesManagement() {
 
   const utils = trpc.useUtils();
   const { data: employees, isLoading } = trpc.admin.employees.list.useQuery();
+  const bulkImportPreview = useMemo(
+    () => parseEmployeeImportText(bulkImportText),
+    [bulkImportText]
+  );
+  const existingEmployeeNames = useMemo(
+    () => new Set((employees ?? []).map((employee) => normalizeImportValue(employee.name))),
+    [employees]
+  );
+  const locallyExistingCount = useMemo(
+    () => new Set(
+      bulkImportPreview.rows
+        .map((row) => normalizeImportValue(row.name))
+        .filter((name) => name && existingEmployeeNames.has(name))
+    ).size,
+    [bulkImportPreview.rows, existingEmployeeNames]
+  );
 
   const createMutation = trpc.admin.employees.create.useMutation({
     onSuccess: () => {
@@ -271,6 +413,17 @@ export default function EmployeesManagement() {
     },
     onError: (error) => {
       toast.error(error.message || "创建伙伴失败");
+    },
+  });
+
+  const bulkCreateMutation = trpc.admin.employees.bulkCreate.useMutation({
+    onSuccess: (result) => {
+      setBulkImportResult(result);
+      utils.admin.employees.list.invalidate();
+      toast.success(`批量导入完成：新增 ${result.created.length} 位，跳过 ${result.skippedExisting.length} 位`);
+    },
+    onError: (error) => {
+      toast.error(error.message || "批量导入失败");
     },
   });
 
@@ -300,6 +453,16 @@ export default function EmployeesManagement() {
     createMutation.mutate(formData);
   };
 
+  const handleBulkImport = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (bulkImportPreview.rows.length === 0) {
+      toast.error("请先粘贴姓名和密码");
+      return;
+    }
+
+    bulkCreateMutation.mutate({ rows: bulkImportPreview.rows });
+  };
+
   const handleResetPassword = (e: React.FormEvent) => {
     e.preventDefault();
     if (resetPasswordEmployee) {
@@ -322,63 +485,151 @@ export default function EmployeesManagement() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle>伙伴管理</CardTitle>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              添加伙伴
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>添加新伙伴</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">姓名</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">密码</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="role">角色</Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={(value: "admin" | "employee") => setFormData({ ...formData, role: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="employee">伙伴</SelectItem>
-                    <SelectItem value="admin">管理员</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
-                  取消
-                </Button>
-                <Button type="submit">创建</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex flex-wrap gap-2">
+          <Dialog open={isBulkImportOpen} onOpenChange={(open) => {
+            setIsBulkImportOpen(open);
+            if (!open) {
+              setBulkImportResult(null);
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                批量导入
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl">
+              <DialogHeader>
+                <DialogTitle>批量导入伙伴</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleBulkImport} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="bulkEmployees">Excel 内容</Label>
+                  <Textarea
+                    id="bulkEmployees"
+                    value={bulkImportText}
+                    onChange={(e) => {
+                      setBulkImportText(e.target.value);
+                      setBulkImportResult(null);
+                    }}
+                    placeholder={"姓名\t密码设置\n方智一\t212121\n路欣蕊\t13134241343"}
+                    className="min-h-[220px] font-mono text-xs"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                  <div className="rounded border px-3 py-2">
+                    <div className="text-gray-500">有效行</div>
+                    <div className="font-semibold">{bulkImportPreview.rows.length}</div>
+                  </div>
+                  <div className="rounded border px-3 py-2">
+                    <div className="text-gray-500">不重复姓名</div>
+                    <div className="font-semibold">{bulkImportPreview.uniqueNames}</div>
+                  </div>
+                  <div className="rounded border px-3 py-2">
+                    <div className="text-gray-500">表内重复</div>
+                    <div className="font-semibold">{bulkImportPreview.duplicateRows}</div>
+                  </div>
+                  <div className="rounded border px-3 py-2">
+                    <div className="text-gray-500">已存在</div>
+                    <div className="font-semibold">{locallyExistingCount}</div>
+                  </div>
+                </div>
+
+                {bulkImportPreview.conflictNames.length > 0 && (
+                  <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    不同密码重复：{bulkImportPreview.conflictNames.slice(0, 12).join("、")}
+                    {bulkImportPreview.conflictNames.length > 12 ? ` 等 ${bulkImportPreview.conflictNames.length} 位` : ""}
+                  </div>
+                )}
+
+                {bulkImportResult && (
+                  <div className="rounded border bg-gray-50 px-3 py-2 text-sm">
+                    <div className="font-medium">新增 {bulkImportResult.created.length} 位，跳过 {bulkImportResult.skippedExisting.length} 位</div>
+                    {bulkImportResult.passwordConflictNames.length > 0 && (
+                      <div className="mt-1 text-amber-700">
+                        已按最后一行密码处理：{bulkImportResult.passwordConflictNames.join("、")}
+                      </div>
+                    )}
+                    {bulkImportResult.invalidRows.length > 0 && (
+                      <div className="mt-1 text-red-600">
+                        无效行：{bulkImportResult.invalidRows.map((row: any) => row.sourceRowNumber).join("、")}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setIsBulkImportOpen(false)}>
+                    取消
+                  </Button>
+                  <Button type="submit" disabled={bulkCreateMutation.isPending || bulkImportPreview.rows.length === 0}>
+                    <Upload className="w-4 h-4 mr-2" />
+                    {bulkCreateMutation.isPending ? "导入中..." : "导入"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                添加伙伴
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>添加新伙伴</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">姓名</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">密码</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">角色</Label>
+                  <Select
+                    value={formData.role}
+                    onValueChange={(value: "admin" | "employee") => setFormData({ ...formData, role: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="employee">伙伴</SelectItem>
+                      <SelectItem value="admin">管理员</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
+                    取消
+                  </Button>
+                  <Button type="submit">创建</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
 
         <Dialog open={!!resetPasswordEmployee} onOpenChange={(open) => {
           if (!open) {
